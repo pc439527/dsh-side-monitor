@@ -1,0 +1,11 @@
+# dsh-side-monitor bundle patch.
+#
+# Installed via:  dsh plugin --profile <name> add <path-or-pkg>
+# The CLI reconciles dsh.profile.bundles against installed packages and,
+# seeing this declaration (dsh.bundle.patch), appends dsh-side-monitor to the
+# bundle stack. The single row mounts BOTH halves: the Host side (read-only
+# system/process/docker collectors + the /side-monitor loopback RPC) and the
+# browser side (sidebar trigger + right monitor drawer, via dsh.client).
+- insert:
+    - id: side-monitor
+      name: 'dsh-side-monitor'
