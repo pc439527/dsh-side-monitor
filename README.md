@@ -1,16 +1,16 @@
 # dsh-side-monitor
 
-DSH 系统监控侧边插件（v0.2.0）。在 DSH 左侧 Sidebar 底部提供一个「系统监控」入口，点击后打开右侧监控面板，实时展示宿主机（DSH 所在主机）的系统概览、进程列表与 Docker 容器状态。
+DSH 系统监控侧边插件（v0.2.1）。在 DSH 左侧 Sidebar 底部提供一个「系统监控」入口，点击后打开右侧监控面板，实时展示宿主机（DSH 所在主机）的系统概览、进程列表与 Docker 容器状态。
 
 ## 特性
 
 - **Sidebar 入口**：注册到 `sidebar.footer.action` 插槽，展开时显示「系统监控」文字，折叠时仅显示图标；打开后高亮。
 - **右侧 Drawer / 移动端全屏**：桌面端为可拖动宽度的右侧面板（默认 500px，范围 360–800px，宽度持久化）；viewport < 768px 时自动切换为全屏页面，不再三栏挤占。采用 **Container Query** 按面板自身宽度自适应。
-- **采集来源标识**：自动识别运行环境（Host / Container），并明确区分「系统数据 / 进程数据 / Docker」各自的来源（当前 DSH 容器 vs 宿主机），顶部徽标 + 状态行「容器视角 / 宿主机视角」+ 「查看采集来源」弹窗三层呈现。
+- **采集来源标识**：自动识别运行环境（Host / Container），并明确区分「系统数据 / 进程数据 / Docker」各自的来源（当前 DSH 容器 vs 宿主机），顶部徽标 + 状态行（概览 / 进程 / Docker 分别标注各自来源）+ 「查看采集来源」弹窗（逐项展示真实来源路径 + 一致性自检）三层呈现。
 - **三个模块，状态彼此独立**（各自 error / 更新时间，请求失败保留最后成功数据并显示 stale 横幅）：
   - **概览**：CPU / 内存 两张强卡片（大百分比 + 副信息 + 面积填充 Sparkline，固定 0–100 纵轴，无圆环）；网络主接口吞吐 / 根分区磁盘 两张轻量 KPI；下方以 section 呈现系统负载、系统信息、磁盘分区（多挂载点）、网络接口（默认路由 + 虚拟接口标记）、Docker 汇总（总数/运行/异常）。
   - **进程**：来源标识（宿主机/当前容器）；搜索 / 排序 / 分页全部下沉到 Host RPC（扫描全部进程后再过滤）；CPU / 内存 / PID / 名称排序 Chip；卡片显示 PID · PPID · 用户，点击展开 RSS / 运行时长 / 命令。
-  - **Docker**：容器名 / 镜像 / 状态 / health（healthy/unhealthy/starting）/ CPU% / 内存 / 端口；**端口可操作**——识别为 Web 的端口点击新标签页打开（使用 `window.location.hostname`），非 Web 端口点击复制 `host:port`，右键弹出 HTTP/HTTPS 打开 / 复制地址菜单；无端口时显示「无端口映射」而非空 Chip。
+  - **Docker**：容器名 / 镜像 / 状态 / health（healthy/unhealthy/starting）/ CPU% / 内存 / 端口；**端口可操作**——已发布（有 hostPort）的 Web 端口点击新标签页打开，非 Web 端口点击复制 `host:port`，右键弹出 HTTP/HTTPS 打开 / 复制地址菜单；正确处理 `127.0.0.1` / `0.0.0.0` / 指定 `hostIp`（IPv6 自动加方括号）；未发布端口显示 🔒 且禁止打开；stats 失败容器显示 ⚠ tooltip；无端口时显示「无端口映射」而非空 Chip。
 - **状态反馈**：顶部实时状态行，手动刷新（旋转动画），「复制诊断信息」菜单（一键生成诊断文本贴给 DSH Agent）。
 - **只读优先**：不做任何控制操作；不提供 docker restart/stop、process kill、exec、shell。
 - **低侵入**：通过 DSH Host + Client 双端插件机制接入，不修改核心代码。
@@ -47,10 +47,10 @@ Client UI (Sidebar Trigger + Monitor Drawer/Fullscreen + 3 Tabs)
         ▼
 Host Service (lib/collectors.js + lib/rpc.js)
   ├─ Environment        (mode / systemSource / processSource / dockerSource / hostname)
-  ├─ Overview Collector (os + procRoot/stat|meminfo|loadavg|uptime|net/dev|net/route + mounts/statfs)
+  ├─ Overview Collector (procRoot/stat|meminfo|loadavg|uptime|cpuinfo|sys/kernel/osrelease + fsRoot/etc/os-release + net/dev|net/route + mounts/statfs)
   ├─ Process Collector  (procRoot/<pid>/stat|status|cmdline，Host 端搜索/排序/分页，含 PPID)
-  ├─ Network Collector  (procRoot/net/dev 采样差分 + procRoot/net/route 默认路由)
-  ├─ Disk Collector     (procRoot/mounts + statfs 多挂载点，同设备去重，10s 缓存)
+  ├─ Network Collector  (procRoot/net/dev 采样差分 + procRoot/net/route 默认路由 + fib_trie/if_inet6 接口 IP)
+  ├─ Disk Collector     (procRoot/mounts + statfs 多挂载点，mountinfo major:minor 同设备去重，10s 缓存)
   └─ Docker Collector   (/var/run/docker.sock 只读 Engine API，health + 结构化端口)
 ```
 
@@ -75,8 +75,18 @@ dsh plugin --profile web add <本目录路径>
 - 不提供任意命令执行、任意 Docker API 代理、控制操作。
 - Host Mount Mode 的 `/host/proc`、`/host/sys`、`/host/root` 必须只读挂载。
 
+## v0.2.1 变更（宿主机指标准确性）
+
+- 负载 / 运行时长 / CPU 核心与型号 / 内核 / 操作系统改读宿主机真实来源（`/host/proc/loadavg`、`/host/proc/uptime`、`/host/proc/cpuinfo`、`/host/proc/sys/kernel/osrelease`、`/host/root/etc/os-release`），不再依赖 `os.*`。
+- 进程运行时长统一使用宿主机 uptime。
+- 网络接口 IP 不再使用 `os.networkInterfaces()`：IPv4 来自 `/proc/net/fib_trie`（本地 `/32`）映射 `/proc/net/route` 已连接子网，IPv6 来自 `/proc/net/if_inet6`。
+- 磁盘同设备去重改用 `/proc/self/mountinfo` 的 `major:minor`（原为 total|used 大小去重）。
+- Docker stats 返回明确状态/错误，失败容器展示 `statsError`（⚠ tooltip）；未发布（无 hostPort）端口禁止打开。
+- 端口打开正确处理 `127.0.0.1` / `0.0.0.0` / 指定 `hostIp`。
+- Docker Tab 状态栏按 `dockerSource` 标注；iPhone 等触屏小屏用 `screen.width`/touch 辅助判定全屏。
+- 「采集来源」弹窗逐项展示真实来源路径；新增宿主机/容器数据一致性自检（只读挂载 + PID 命名空间隔离）。
+
 ## 已知限制
 
-- 完整宿主 PID 视图可进一步通过 `pid: host` 获得，但默认不强制开启。
-- 宿主机网络接口的 IP 列表当前仍来自容器视角（`os.networkInterfaces()`）；吞吐/默认路由来自 procRoot。完整宿主机网络留待 v0.2.1。
+- 完整宿主 PID 视图可进一步通过 `pid: host` 获得，但默认不强制开启；开启后一致性自检会提示 PID 命名空间未隔离。
 - 宿主/容器进程双视角切换、设置页、历史趋势、DSH 原生 Side Card 集成留待后续版本。
