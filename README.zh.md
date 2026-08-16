@@ -7,6 +7,10 @@ DSH（DeepSeek Harness）Web 的**只读系统监控**插件：在左侧 Sidebar
 
 > 全程只读：不提供 docker restart/stop、process kill、exec、shell 等任何控制操作，适合随手查资源、排障和观察容器状态。
 
+## 截图
+
+<img width="1904" height="960" alt="dsh-side-monitor 系统监控面板" src="https://github.com/user-attachments/assets/55764a6a-89da-45cc-8ad0-722fd19262bc" />
+
 ## 功能特性
 
 ### 概览（Overview）

@@ -6,6 +6,9 @@ A **read-only system monitor** for DeepSeek Harness (DSH) Web: a “System Monit
 [![License: MIT](https://img.shields.io/badge/license-MIT-blue.svg)](LICENSE)
 
 > Read-only by design: no docker restart/stop, no process kill, no exec, no shell. Built for quick resource checks, troubleshooting, and container observation.
+## Screenshots
+
+<img width="1904" height="960" alt="dsh-side-monitor — system monitor drawer" src="https://github.com/user-attachments/assets/55764a6a-89da-45cc-8ad0-722fd19262bc" />
 
 ## Features
 
