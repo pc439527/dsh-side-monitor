@@ -1,6 +1,6 @@
 # dsh-side-monitor
 
-DSH 系统监控侧边插件（v0.2.1）。在 DSH 左侧 Sidebar 底部提供一个「系统监控」入口，点击后打开右侧监控面板，实时展示宿主机（DSH 所在主机）的系统概览、进程列表与 Docker 容器状态。
+DSH 系统监控侧边插件（v0.2.2）。在 DSH 左侧 Sidebar 底部提供一个「系统监控」入口，点击后打开右侧监控面板，实时展示宿主机（DSH 所在主机）的系统概览、进程列表与 Docker 容器状态。
 
 ## 特性
 
@@ -85,6 +85,16 @@ dsh plugin --profile web add <本目录路径>
 - 端口打开正确处理 `127.0.0.1` / `0.0.0.0` / 指定 `hostIp`。
 - Docker Tab 状态栏按 `dockerSource` 标注；iPhone 等触屏小屏用 `screen.width`/touch 辅助判定全屏。
 - 「采集来源」弹窗逐项展示真实来源路径；新增宿主机/容器数据一致性自检（只读挂载 + PID 命名空间隔离）。
+
+## v0.2.2 变更（可靠性收口）
+
+- 网络接口以 `/proc/net/dev` 为事实源：即使 IP 解析失败（fib_trie / if_inet6）也保留接口与流量，IP 可为 null；首次采样无差值时返回 null，UI 显示「正在采样…」而非假 0。
+- CPU 区分物理核心 / 逻辑 CPU（`physicalCores` / `cpuCores`），UI 不再把逻辑 CPU 写成「核心数」。
+- Docker 端口：`127.0.0.1` / `::1` 标记「仅宿主机本地」并锁定（禁止用远端 hostname 打开）；去重 key 加入 `hostIp`（IPv4/IPv6 多地址绑定不再误合并）；up 时间中文化（如「已运行 20 小时」）。
+- RPC 版本握手：响应携带 `protocolVersion`（v3）+ `pluginVersion`；客户端不匹配时显示「版本不一致」横幅与「关于」面板（Browser/Host/RPC 版本），避免旧 Host 导致的 undefined 字段。
+- 进程页新增「列表 / 聚合」视图：按 name+command 分组（Host 端全量分组），展开查看 PID 列表，保持只读。
+- 移动端改用 `100dvh` + `env(safe-area-inset-bottom)`，iOS Safari 地址栏收展更自然。
+- 新增 fixture 单元测试（`npm test`，node:test + test/fixtures/proc）与 GitHub Actions CI（Node 20/22）。
 
 ## 已知限制
 
