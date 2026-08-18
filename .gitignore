@@ -4,3 +4,6 @@ node_modules/
 .env
 .env.*
 !.env.example
+deploy/recreate-20260818/GO
+deploy/recreate-20260818/GO2
+deploy/recreate-20260818/recreate.log
