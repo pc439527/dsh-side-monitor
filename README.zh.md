@@ -7,6 +7,13 @@ DSH（DeepSeek Harness）Web 的**只读系统监控**插件：在左侧 Sidebar
 
 > 全程只读：不提供 docker restart/stop、process kill、exec、shell 等任何控制操作，适合随手查资源、排障和观察容器状态。
 
+## v0.2.3 — 完整中英文 & 宿主机网络
+
+- **完整中英文双语 UI（zh-CN / en-US）**：默认简体中文（不跟随浏览器），右上角菜单「⋯ → 语言」即时切换，语言持久化在 `dsh-side-monitor:language`。Header / Tab / 卡片 / 进程 / Docker / Toast / 错误 / Tooltip / 诊断信息全部翻译（字典在 `lib/i18n.js`，由 `tools/convert-i18n.mjs` 生成进客户端包）。
+- **Header** 改为展示数据来源徽标（`宿主数据` / `Host Data`），副标题带运行环境说明（`PC9527-fnOS · DSH 运行于容器`）；**关于** 展示 Browser / Host / RPC / 运行环境 / 系统 / 进程 / Docker 数据来源。
+- **宿主模式真实网络**：`/proc/net` 是 netns 作用域，挂载 `/host/proc` 仍看到容器接口 —— v0.2.3 通过短暂 `--net=host` 只读探测容器读取真实宿主 netns（带缓存、失败自动回退），并裁剪 veth/br/docker 噪音；磁盘去重改用 `st_dev` 并展示宿主数据卷（fnOS 的 `/vol1`）。
+- **Docker 端口徽标视觉规则**：Web = 蓝色 `🌐 宿主 → 容器`，普通 TCP = 中性灰 `📋`，Loopback = 黄色 `🔒 + 仅宿主机`，未发布 = 灰黄 `🔒 + 容器内`；IPv4+IPv6 双栈合并为单个徽标并带 `IPv4 + IPv6` 标记。
+
 ## 截图
 
 <img width="1904" height="960" alt="dsh-side-monitor 系统监控面板" src="https://github.com/user-attachments/assets/55764a6a-89da-45cc-8ad0-722fd19262bc" />

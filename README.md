@@ -6,6 +6,14 @@ A **read-only system monitor** for DeepSeek Harness (DSH) Web: a “System Monit
 [![License: MIT](https://img.shields.io/badge/license-MIT-blue.svg)](LICENSE)
 
 > Read-only by design: no docker restart/stop, no process kill, no exec, no shell. Built for quick resource checks, troubleshooting, and container observation.
+
+## v0.2.3 — i18n & host networking
+
+- **Full bilingual UI (zh-CN / en-US)**: default Simplified Chinese (never follows the browser), switch instantly from the drawer menu (⋯ → Language) with persistence via `dsh-side-monitor:language`. Every header / tab / card / process / docker / toast / error / tooltip / diagnostics string is translated (dictionary in `lib/i18n.js`, regenerated into the client bundle by `tools/convert-i18n.mjs`).
+- **Header** now shows the data source badge (`Host Data` / `宿主数据`) with the runtime note in the subtitle (`PC9527-fnOS · DSH Container`); **About** reports Browser / Host / RPC / Runtime / System / Process / Docker sources.
+- **Real host network in Host Mount Mode**: `/proc/net` is net-namespace scoped, so a `/host/proc` bind still shows the container's interfaces — v0.2.3 reads the host netns through a short-lived `--net=host` read-only probe (cached, falls back gracefully) and curates veth/br/docker noise. Disk dedup now uses `st_dev` and surfaces host data volumes (`/vol1` on fnOS).
+- **Docker port chips** follow the visual rules: web = blue `🌐 host → container`, plain TCP = neutral `📋`, loopback = yellow `🔒 + Host only`, unpublished = gray `🔒 + Container only`; IPv4+IPv6 dual-stack renders once with an `IPv4 + IPv6` tag.
+
 ## Screenshots
 
 <img width="1904" height="960" alt="dsh-side-monitor — system monitor drawer" src="https://github.com/user-attachments/assets/55764a6a-89da-45cc-8ad0-722fd19262bc" />

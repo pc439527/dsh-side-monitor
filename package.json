@@ -1,6 +1,6 @@
 {
   "name": "dsh-side-monitor",
-  "version": "0.2.2",
+  "version": "0.2.3",
   "description": "DSH 系统监控侧边插件：在 Sidebar 提供「系统监控」入口，打开右侧监控面板，实时展示宿主机概览、进程与 Docker 容器状态（只读）",
   "type": "module",
   "main": "lib/index.js",

@@ -1,0 +1,281 @@
+[
+    {
+        "Id": "505af1e41a4d6c09ac7b652618be8c1751aa33acb028a3705fc8138d6b8c222b",
+        "Created": "2026-08-14T01:45:15.749473706Z",
+        "Path": "docker-entrypoint.sh",
+        "Args": [
+            "sh",
+            "-lc",
+            "socat TCP-LISTEN:3081,fork,reuseaddr,bind=0.0.0.0 TCP:127.0.0.1:3080 & exec dsh web --host 127.0.0.1 --port 3080 --trusted-host 192.168.5.22:3080 --trusted-host 100.76.118.33:3080 --trusted-host pc9527-fnos.taild585a9.ts.net:8443"
+        ],
+        "State": {
+            "Status": "running",
+            "Running": true,
+            "Paused": false,
+            "Restarting": false,
+            "OOMKilled": false,
+            "Dead": false,
+            "Pid": 260117,
+            "ExitCode": 0,
+            "Error": "",
+            "StartedAt": "2026-08-18T01:28:31.192514757Z",
+            "FinishedAt": "2026-08-18T01:28:31.009660948Z"
+        },
+        "Image": "sha256:eef47a9e250e7179646303e9e09105f3606bd33b8e9d20c1a915a92b65294af2",
+        "ResolvConfPath": "/vol1/docker/containers/505af1e41a4d6c09ac7b652618be8c1751aa33acb028a3705fc8138d6b8c222b/resolv.conf",
+        "HostnamePath": "/vol1/docker/containers/505af1e41a4d6c09ac7b652618be8c1751aa33acb028a3705fc8138d6b8c222b/hostname",
+        "HostsPath": "/vol1/docker/containers/505af1e41a4d6c09ac7b652618be8c1751aa33acb028a3705fc8138d6b8c222b/hosts",
+        "LogPath": "/vol1/docker/containers/505af1e41a4d6c09ac7b652618be8c1751aa33acb028a3705fc8138d6b8c222b/505af1e41a4d6c09ac7b652618be8c1751aa33acb028a3705fc8138d6b8c222b-json.log",
+        "Name": "/deepseek-harness",
+        "RestartCount": 0,
+        "Driver": "overlay2",
+        "Platform": "linux",
+        "MountLabel": "",
+        "ProcessLabel": "",
+        "AppArmorProfile": "docker-default",
+        "ExecIDs": null,
+        "HostConfig": {
+            "Binds": [
+                "/usr/bin/docker:/usr/local/bin/docker:ro",
+                "/usr/libexec/docker/cli-plugins:/usr/local/libexec/docker/cli-plugins:ro",
+                "/var/run/docker.sock:/var/run/docker.sock",
+                "/vol1/1000/deepseekharness/home:/data",
+                "/vol1/1000/deepseekharness/workspace:/workspace",
+                "/opt:/data/opt"
+            ],
+            "ContainerIDFile": "",
+            "LogConfig": {
+                "Type": "json-file",
+                "Config": {
+                    "max-file": "5",
+                    "max-size": "100m"
+                }
+            },
+            "NetworkMode": "bridge",
+            "PortBindings": {
+                "3081/tcp": [
+                    {
+                        "HostIp": "",
+                        "HostPort": "3080"
+                    }
+                ]
+            },
+            "RestartPolicy": {
+                "Name": "unless-stopped",
+                "MaximumRetryCount": 0
+            },
+            "AutoRemove": false,
+            "VolumeDriver": "",
+            "VolumesFrom": null,
+            "ConsoleSize": [
+                48,
+                149
+            ],
+            "CapAdd": null,
+            "CapDrop": null,
+            "CgroupnsMode": "private",
+            "Dns": [],
+            "DnsOptions": [],
+            "DnsSearch": [],
+            "ExtraHosts": null,
+            "GroupAdd": null,
+            "IpcMode": "private",
+            "Cgroup": "",
+            "Links": null,
+            "OomScoreAdj": 0,
+            "PidMode": "",
+            "Privileged": false,
+            "PublishAllPorts": false,
+            "ReadonlyRootfs": false,
+            "SecurityOpt": null,
+            "UTSMode": "",
+            "UsernsMode": "",
+            "ShmSize": 67108864,
+            "Runtime": "runc",
+            "Isolation": "",
+            "CpuShares": 0,
+            "Memory": 0,
+            "NanoCpus": 0,
+            "CgroupParent": "",
+            "BlkioWeight": 0,
+            "BlkioWeightDevice": [],
+            "BlkioDeviceReadBps": [],
+            "BlkioDeviceWriteBps": [],
+            "BlkioDeviceReadIOps": [],
+            "BlkioDeviceWriteIOps": [],
+            "CpuPeriod": 0,
+            "CpuQuota": 0,
+            "CpuRealtimePeriod": 0,
+            "CpuRealtimeRuntime": 0,
+            "CpusetCpus": "",
+            "CpusetMems": "",
+            "Devices": [],
+            "DeviceCgroupRules": null,
+            "DeviceRequests": null,
+            "MemoryReservation": 0,
+            "MemorySwap": 0,
+            "MemorySwappiness": null,
+            "OomKillDisable": null,
+            "PidsLimit": null,
+            "Ulimits": [],
+            "CpuCount": 0,
+            "CpuPercent": 0,
+            "IOMaximumIOps": 0,
+            "IOMaximumBandwidth": 0,
+            "MaskedPaths": [
+                "/proc/acpi",
+                "/proc/asound",
+                "/proc/interrupts",
+                "/proc/kcore",
+                "/proc/keys",
+                "/proc/latency_stats",
+                "/proc/sched_debug",
+                "/proc/scsi",
+                "/proc/timer_list",
+                "/proc/timer_stats",
+                "/sys/devices/virtual/powercap",
+                "/sys/firmware",
+                "/sys/devices/system/cpu/cpu0/thermal_throttle",
+                "/sys/devices/system/cpu/cpu1/thermal_throttle",
+                "/sys/devices/system/cpu/cpu2/thermal_throttle",
+                "/sys/devices/system/cpu/cpu3/thermal_throttle"
+            ],
+            "ReadonlyPaths": [
+                "/proc/bus",
+                "/proc/fs",
+                "/proc/irq",
+                "/proc/sys",
+                "/proc/sysrq-trigger"
+            ]
+        },
+        "GraphDriver": {
+            "Data": {
+                "ID": "505af1e41a4d6c09ac7b652618be8c1751aa33acb028a3705fc8138d6b8c222b",
+                "LowerDir": "/vol1/docker/overlay2/89d6978e25c63ec89505105502f425b67b5eab413cdca14241a7cf9b8d54b464-init/diff:/vol1/docker/overlay2/4q2witakfkqokq561z0iifd1k/diff:/vol1/docker/overlay2/z318gidta1hwhym563l5mfgsq/diff:/vol1/docker/overlay2/kal3c67rzcrangogjn42tfftk/diff:/vol1/docker/overlay2/2r9h2r2v1977nzav7wr6rq3f4/diff:/vol1/docker/overlay2/0b89eba85c0a8e2a9395e17bc1afaf760250eba38265629c023559c4f4c24d69/diff:/vol1/docker/overlay2/978e7705233510488e0dd139cb05c066a3c0ba90331a53858b536f919b8c7dd6/diff:/vol1/docker/overlay2/0fc3915bdf6eabb635116e3181bf278d2b55a65ed78833c813cbeebde7188282/diff:/vol1/docker/overlay2/813fae1b2acd9a8e83262f8ea48735c23f19b4312f93fd3bd91aa32e07b0812e/diff:/vol1/docker/overlay2/3d65ad04b7e71ed2925879a6816561110c3a42ea7307946dec4028c39cc29fb3/diff",
+                "MergedDir": "/vol1/docker/overlay2/89d6978e25c63ec89505105502f425b67b5eab413cdca14241a7cf9b8d54b464/merged",
+                "UpperDir": "/vol1/docker/overlay2/89d6978e25c63ec89505105502f425b67b5eab413cdca14241a7cf9b8d54b464/diff",
+                "WorkDir": "/vol1/docker/overlay2/89d6978e25c63ec89505105502f425b67b5eab413cdca14241a7cf9b8d54b464/work"
+            },
+            "Name": "overlay2"
+        },
+        "Mounts": [
+            {
+                "Type": "bind",
+                "Source": "/vol1/1000/deepseekharness/workspace",
+                "Destination": "/workspace",
+                "Mode": "",
+                "RW": true,
+                "Propagation": "rprivate"
+            },
+            {
+                "Type": "bind",
+                "Source": "/vol1/1000/deepseekharness/home",
+                "Destination": "/data",
+                "Mode": "",
+                "RW": true,
+                "Propagation": "rprivate"
+            },
+            {
+                "Type": "bind",
+                "Source": "/opt",
+                "Destination": "/data/opt",
+                "Mode": "",
+                "RW": true,
+                "Propagation": "rprivate"
+            },
+            {
+                "Type": "bind",
+                "Source": "/usr/bin/docker",
+                "Destination": "/usr/local/bin/docker",
+                "Mode": "ro",
+                "RW": false,
+                "Propagation": "rprivate"
+            },
+            {
+                "Type": "bind",
+                "Source": "/usr/libexec/docker/cli-plugins",
+                "Destination": "/usr/local/libexec/docker/cli-plugins",
+                "Mode": "ro",
+                "RW": false,
+                "Propagation": "rprivate"
+            },
+            {
+                "Type": "bind",
+                "Source": "/var/run/docker.sock",
+                "Destination": "/var/run/docker.sock",
+                "Mode": "",
+                "RW": true,
+                "Propagation": "rprivate"
+            }
+        ],
+        "Config": {
+            "Hostname": "505af1e41a4d",
+            "Domainname": "",
+            "User": "",
+            "AttachStdin": false,
+            "AttachStdout": false,
+            "AttachStderr": false,
+            "ExposedPorts": {
+                "3080/tcp": {},
+                "3081/tcp": {}
+            },
+            "Tty": false,
+            "OpenStdin": false,
+            "StdinOnce": false,
+            "Env": [
+                "HOME=/data",
+                "PATH=/usr/local/sbin:/usr/local/bin:/usr/sbin:/usr/bin:/sbin:/bin",
+                "NODE_VERSION=22.23.2",
+                "YARN_VERSION=1.22.22"
+            ],
+            "Cmd": [
+                "sh",
+                "-lc",
+                "socat TCP-LISTEN:3081,fork,reuseaddr,bind=0.0.0.0 TCP:127.0.0.1:3080 & exec dsh web --host 127.0.0.1 --port 3080 --trusted-host 192.168.5.22:3080 --trusted-host 100.76.118.33:3080 --trusted-host pc9527-fnos.taild585a9.ts.net:8443"
+            ],
+            "Image": "deepseek-harness:0.1.0-rc.6-tailscale-persist",
+            "Volumes": null,
+            "WorkingDir": "/workspace",
+            "Entrypoint": [
+                "docker-entrypoint.sh"
+            ],
+            "Labels": {}
+        },
+        "NetworkSettings": {
+            "SandboxID": "420ff6c746cb3a89f2465f230418bf7e7684dab92bdb33984f0fee51bfdec56d",
+            "SandboxKey": "/var/run/docker/netns/420ff6c746cb",
+            "Ports": {
+                "3080/tcp": null,
+                "3081/tcp": [
+                    {
+                        "HostIp": "0.0.0.0",
+                        "HostPort": "3080"
+                    },
+                    {
+                        "HostIp": "::",
+                        "HostPort": "3080"
+                    }
+                ]
+            },
+            "Networks": {
+                "bridge": {
+                    "IPAMConfig": null,
+                    "Links": null,
+                    "Aliases": null,
+                    "DriverOpts": null,
+                    "GwPriority": 0,
+                    "NetworkID": "d2a6646e7d24336caccb767a28d65cc87a6454f82d24b3d22fed802bde7bf920",
+                    "EndpointID": "0ce578ede3b68e19396a2594ad31f846228f242acc6737ca8ee3b4d4e3994b29",
+                    "Gateway": "172.17.0.1",
+                    "IPAddress": "172.17.0.2",
+                    "MacAddress": "1e:bf:65:55:fc:51",
+                    "IPPrefixLen": 16,
+                    "IPv6Gateway": "",
+                    "GlobalIPv6Address": "",
+                    "GlobalIPv6PrefixLen": 0,
+                    "DNSNames": null
+                }
+            }
+        }
+    }
+]
