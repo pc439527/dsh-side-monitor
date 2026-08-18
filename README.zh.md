@@ -2,7 +2,7 @@
 
 DSH（DeepSeek Harness）Web 的**只读系统监控**插件：在左侧 Sidebar 底部提供「系统监控」入口，点击打开右侧监控面板，实时展示**宿主机**（DSH 所在主机）的系统概览、进程列表与 Docker 容器状态。
 
-[![License: MIT](https://img.shields.io/badge/license-MIT-blue.svg)](LICENSE)
+[![License: MIT](https://img.shields.io/badge/license-MIT-blue.svg)](LICENSE) [![awesome · DSH plugin](https://awesome-dsh-plugin.com/badge.svg)](https://awesome-dsh-plugin.com)
 
 > 全程只读：不提供 docker restart/stop、process kill、exec、shell 等任何控制操作，适合随手查资源、排障和观察容器状态。
 
