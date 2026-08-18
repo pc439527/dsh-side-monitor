@@ -7,9 +7,20 @@ A **read-only system monitor** for DeepSeek Harness (DSH) Web: a “System Monit
 
 > Read-only by design: no docker restart/stop, no process kill, no exec, no shell. Built for quick resource checks, troubleshooting, and container observation.
 
+## v0.3.0 — stopped/issue split, perf, capabilities & CI drift check
+
+- **Docker stopped / issue semantic split**: a cleanly stopped container (exit code 0) is now just "Stopped" — it no longer inflates the issue count. Issues are reserved for real problems: unhealthy, health-starting, crash-looping (restarting), dead, or non-zero exits. The Overview + Docker tabs show separate **Total / Running / Stopped / Issues** chips and filters; crashed containers display their exit code (Crashed (137)).
+- **Host network probe performance**: the `--net=host` netns probe now runs at most every 15s (was 5s) and never blocks the overview poll — stale snapshots are reused while the refresh happens in the background, with a baseline guard so the container-netns fallback never diffs against host-netns counters.
+- **Client version auto-sync**: `lib/client.js`'s `CLIENT_VERSION` is regenerated from `package.json` by `tools/sync-generated.mjs` (replaces `tools/convert-i18n.mjs`), which also regenerates the inline i18n dictionary and lints for the no-concatenation rule; CI runs `npm run check:gen` and fails on any drift.
+- **i18n no-string-concatenation**: every user-visible sentence is a placeholder message — no `t("a") + t("b")` splicing anywhere in the client, enforced by the generator's lint.
+- **Label & header polish**: `Received/Sent` -> `RX/TX`; `DSH Container` -> `DSH running in container` (`DSH on host` -> `DSH running on host`); the status line under the header no longer repeats the data source (it was duplicated with the header badge) and the view label is properly spaced (`Host view`, never `Hostview`).
+- **meta status细分 + capabilities**: the `meta` endpoint reports fine-grained status (mode, per-source state, network probe, consistency) and Host capabilities (Host Mount mode, Docker socket, host-netns probe, process aggregation, container stats) — shown in new Status / Capabilities sections of the About dialog.
+- **Process aggregate details**: grouped cards expand to show the command, distinct users and total RSS.
+- **Memory chart transparency**: the memory sparkline fill opacity is tuned for legibility (0.2 vs 0.12 for CPU); Docker cards are compressed further.
+
 ## v0.2.3 — i18n & host networking
 
-- **Full bilingual UI (zh-CN / en-US)**: default Simplified Chinese (never follows the browser), switch instantly from the drawer menu (⋯ → Language) with persistence via `dsh-side-monitor:language`. Every header / tab / card / process / docker / toast / error / tooltip / diagnostics string is translated (dictionary in `lib/i18n.js`, regenerated into the client bundle by `tools/convert-i18n.mjs`).
+- **Full bilingual UI (zh-CN / en-US)**: default Simplified Chinese (never follows the browser), switch instantly from the drawer menu (⋯ → Language) with persistence via `dsh-side-monitor:language`. Every header / tab / card / process / docker / toast / error / tooltip / diagnostics string is translated (dictionary in `lib/i18n.js`, regenerated into the client bundle by `tools/sync-generated.mjs`).
 - **Header** now shows the data source badge (`Host Data` / `宿主数据`) with the runtime note in the subtitle (`PC9527-fnOS · DSH Container`); **About** reports Browser / Host / RPC / Runtime / System / Process / Docker sources.
 - **Real host network in Host Mount Mode**: `/proc/net` is net-namespace scoped, so a `/host/proc` bind still shows the container's interfaces — v0.2.3 reads the host netns through a short-lived `--net=host` read-only probe (cached, falls back gracefully) and curates veth/br/docker noise. Disk dedup now uses `st_dev` and surfaces host data volumes (`/vol1` on fnOS).
 - **Docker port chips** follow the visual rules: web = blue `🌐 host → container`, plain TCP = neutral `📋`, loopback = yellow `🔒 + Host only`, unpublished = gray `🔒 + Container only`; IPv4+IPv6 dual-stack renders once with an `IPv4 + IPv6` tag.
@@ -24,18 +35,18 @@ A **read-only system monitor** for DeepSeek Harness (DSH) Web: a “System Monit
 
 - **CPU / memory metric cards**: large percentage, sub-info, and an area-filled sparkline (fixed 0–100 axis).
 - **Network primary-interface throughput / root-partition disk** lightweight KPIs.
-- Sections below: system load, system info, disk partitions (multiple mount points), network interfaces (default-route + virtual-interface markers), Docker summary (total / running / unhealthy).
+- Sections below: system load, system info, disk partitions (multiple mount points), network interfaces (default-route + virtual-interface markers, RX/TX rates), Docker summary (total / running / stopped / issues).
 
 ### Processes
 
 - Source label (host / current container).
 - Search / sort / pagination run entirely in the Host RPC (scans all processes, then filters) — stays smooth with large process tables.
 - Sort chips for CPU / memory / PID / name; cards show PID · PPID · user, click to expand RSS / uptime / command.
-- List and aggregate views: group by name+command, expand to see the PID list.
+- List and aggregate views: group by name+command, expand to see the PID list, command, distinct users and total RSS.
 
 ### Docker (Containers)
 
-- Container name / image / state / health (healthy/unhealthy/starting) / CPU% / memory / ports.
+- Container name / image / state / health (healthy/unhealthy/starting) / CPU% / memory / ports. Clean stops (exit 0) are shown as Stopped and never counted as issues; crashed containers show Crashed (137)-style badges.
 - **Actionable ports**: published Web ports (with hostPort) open in a new tab on click; non-Web ports copy `host:port`; right-click menu offers HTTP/HTTPS open / copy address.
 - Correct handling of `127.0.0.1` / `0.0.0.0` / explicit `hostIp` (IPv6 auto-bracketed); unpublished ports show 🔒 and cannot be opened; containers with failed stats show a ⚠ tooltip.
 
@@ -45,7 +56,7 @@ A **read-only system monitor** for DeepSeek Harness (DSH) Web: a “System Monit
 - **Responsive**: a draggable right drawer on desktop (default 500px, range 360–800px, width persisted); switches to a full-screen page below 768px viewport, using Container Query to adapt to the panel's own width; mobile uses `100dvh` + safe-area insets.
 - **Source identification**: auto-detects the environment (Host / Container); top badge + status line (per-module sources for overview / processes / Docker) + a “View data sources” dialog listing the real source paths with a consistency self-check.
 - **Independent module state**: each module has its own error / updated-at; on failure the last good data is kept with a stale banner.
-- **Protocol handshake**: RPC responses carry `protocolVersion` (v3) + `pluginVersion`; a mismatch shows a “version mismatch” banner and an About panel (Browser / Host / RPC versions) instead of undefined fields.
+- **Protocol handshake**: RPC responses carry `protocolVersion` (v3) + `pluginVersion`; a mismatch shows a “version mismatch” banner and an About panel (Browser / Host / RPC versions, fine-grained status and capabilities) instead of undefined fields.
 - Manual refresh (spinner animation) and a “copy diagnostics” action that generates a one-click diagnostic text.
 - Polling stops/pauses when the panel is closed or the tab is hidden; each poll awaits the previous request (no re-entrancy).
 

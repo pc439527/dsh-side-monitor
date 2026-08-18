@@ -6,6 +6,10 @@ const collector = {
   overview: async () => ({ fake: 'overview' }),
   processes: async () => ({ fake: 'processes' }),
   containers: async () => ({ fake: 'containers' }),
+  metaInfo: async () => ({
+    status: { mode: 'host', systemSource: 'host', processSource: 'host', dockerSource: 'unavailable', hostMetrics: false, networkProbe: 'container-netns', consistency: { ok: true, warnings: [] } },
+    capabilities: { hostMount: false, dockerSocket: false, hostNetNsProbe: false, processAggregate: true, containerStats: false },
+  }),
 }
 
 test('RPC meta exposes version inside the value payload (never top-level)', async () => {
@@ -22,6 +26,21 @@ test('RPC meta exposes version inside the value payload (never top-level)', asyn
   assert.equal(typeof result.value.startedAt, 'number')
   assert.ok(result.value.nodeVersion)
   assert.ok(result.value.platform && result.value.arch)
+  // v0.3: fine-grained status + capabilities travel inside the value payload
+  assert.equal(result.value.status.mode, 'host')
+  assert.equal(result.value.status.systemSource, 'host')
+  assert.equal(result.value.capabilities.processAggregate, true)
+  assert.equal(result.value.capabilities.dockerSocket, false)
+})
+
+test('RPC meta works without collector.metaInfo (backward compatible)', async () => {
+  const plain = { overview: async () => ({}), processes: async () => ({}), containers: async () => ({}) }
+  const handler = createRpcHandler(plain)
+  const result = await handler(ENDPOINTS.meta, {})
+  assert.equal(result.ok, true)
+  assert.equal(result.value.protocolVersion, PROTOCOL_VERSION)
+  assert.equal('status' in result.value, false)
+  assert.equal('capabilities' in result.value, false)
 })
 
 test('ok/err return the standard RpcResult shapes', () => {

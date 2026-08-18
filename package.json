@@ -1,12 +1,14 @@
 {
   "name": "dsh-side-monitor",
-  "version": "0.2.3",
+  "version": "0.3.0",
   "description": "DSH 系统监控侧边插件：在 Sidebar 提供「系统监控」入口，打开右侧监控面板，实时展示宿主机概览、进程与 Docker 容器状态（只读）",
   "type": "module",
   "main": "lib/index.js",
   "scripts": {
     "check": "node --check lib/index.js && node --check lib/rpc.js && node --check lib/collectors.js && node --check lib/client.js",
-    "test": "node --test"
+    "test": "node --test",
+    "sync:gen": "node tools/sync-generated.mjs",
+    "check:gen": "node tools/sync-generated.mjs --check"
   },
   "exports": {
     ".": {

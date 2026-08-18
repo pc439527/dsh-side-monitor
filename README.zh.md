@@ -7,9 +7,20 @@ DSH（DeepSeek Harness）Web 的**只读系统监控**插件：在左侧 Sidebar
 
 > 全程只读：不提供 docker restart/stop、process kill、exec、shell 等任何控制操作，适合随手查资源、排障和观察容器状态。
 
+## v0.3.0 — 停止/异常语义拆分、性能、能力与 CI 漂移检查
+
+- **Docker 停止/异常语义拆分**：正常停止（退出码 0）的容器现在只算「已停止」，不再计入「异常」；异常只统计真正的问题——不健康、健康检查中、重启中（崩溃循环）、dead、或非零退出。概览与 Docker 页都展示独立的 **总数 / 运行 / 已停止 / 异常** 徽标与筛选，崩溃容器显示退出码（已崩溃 (137)）。
+- **宿主网络探测性能优化**：`--net=host` 探测从 5s 一次降到最多 15s 一次，且不再阻塞概览轮询——缓存未过期直接复用，过期时后台刷新；并加了基线保护，避免容器 netns 回退与宿主 netns 计数器互相差分产生错误速率。
+- **Client 版本自动同步**：`lib/client.js` 的 `CLIENT_VERSION` 由 `tools/sync-generated.mjs`（取代 `tools/convert-i18n.mjs`）从 `package.json` 重新生成，同时重新生成内联 i18n 字典并做「禁止字符串拼接」lint；CI 通过 `npm run check:gen` 对任何漂移直接报错。
+- **i18n 禁止字符串拼接**：所有可见句子都是带占位符的完整消息，客户端不再有 `t("a") + t("b")` 拼接，生成器内置 lint 强制约束。
+- **文案与 Header 打磨**：接口表 `接收/发送` -> `RX/TX`；`DSH Container` -> `DSH running in container`（`DSH on host` -> `DSH running on host`）；Header 下方的状态行不再重复数据来源（此前与徽标的 `Host view` 重复），视角文案修正为正确空格的 `Host view`（不再是 `Hostview`）。
+- **meta 状态细分 + capabilities**：`meta` 端点新增细粒度状态（运行模式、各数据来源、网络探测、一致性）与宿主能力（Host Mount、Docker Socket、宿主 netns 探测、进程聚合、容器实时统计），在「关于」弹窗新增 状态/能力 区块展示。
+- **进程聚合详情**：聚合卡片展开后展示命令、去重用户与总 RSS。
+- **内存图透明度**：内存 Sparkline 填充透明度调高（0.2，CPU 为 0.12）更清晰；Docker 卡片进一步压缩。
+
 ## v0.2.3 — 完整中英文 & 宿主机网络
 
-- **完整中英文双语 UI（zh-CN / en-US）**：默认简体中文（不跟随浏览器），右上角菜单「⋯ → 语言」即时切换，语言持久化在 `dsh-side-monitor:language`。Header / Tab / 卡片 / 进程 / Docker / Toast / 错误 / Tooltip / 诊断信息全部翻译（字典在 `lib/i18n.js`，由 `tools/convert-i18n.mjs` 生成进客户端包）。
+- **完整中英文双语 UI（zh-CN / en-US）**：默认简体中文（不跟随浏览器），右上角菜单「⋯ → 语言」即时切换，语言持久化在 `dsh-side-monitor:language`。Header / Tab / 卡片 / 进程 / Docker / Toast / 错误 / Tooltip / 诊断信息全部翻译（字典在 `lib/i18n.js`，由 `tools/sync-generated.mjs` 生成进客户端包）。
 - **Header** 改为展示数据来源徽标（`宿主数据` / `Host Data`），副标题带运行环境说明（`PC9527-fnOS · DSH 运行于容器`）；**关于** 展示 Browser / Host / RPC / 运行环境 / 系统 / 进程 / Docker 数据来源。
 - **宿主模式真实网络**：`/proc/net` 是 netns 作用域，挂载 `/host/proc` 仍看到容器接口 —— v0.2.3 通过短暂 `--net=host` 只读探测容器读取真实宿主 netns（带缓存、失败自动回退），并裁剪 veth/br/docker 噪音；磁盘去重改用 `st_dev` 并展示宿主数据卷（fnOS 的 `/vol1`）。
 - **Docker 端口徽标视觉规则**：Web = 蓝色 `🌐 宿主 → 容器`，普通 TCP = 中性灰 `📋`，Loopback = 黄色 `🔒 + 仅宿主机`，未发布 = 灰黄 `🔒 + 容器内`；IPv4+IPv6 双栈合并为单个徽标并带 `IPv4 + IPv6` 标记。
@@ -24,18 +35,18 @@ DSH（DeepSeek Harness）Web 的**只读系统监控**插件：在左侧 Sidebar
 
 - **CPU / 内存两张强卡片**：大百分比 + 副信息 + 面积填充 Sparkline（固定 0–100 纵轴）。
 - **网络主接口吞吐 / 根分区磁盘**两张轻量 KPI。
-- 下方 section 呈现：系统负载、系统信息、磁盘分区（多挂载点）、网络接口（默认路由 + 虚拟接口标记）、Docker 汇总（总数 / 运行 / 异常）。
+- 下方 section 呈现：系统负载、系统信息、磁盘分区（多挂载点）、网络接口（默认路由 + 虚拟接口标记、RX/TX 速率）、Docker 汇总（总数 / 运行 / 已停止 / 异常）。
 
 ### 进程（Processes）
 
 - 来源标识（宿主机 / 当前容器）。
 - 搜索 / 排序 / 分页全部下沉到 Host RPC（扫描全部进程后再过滤），数据量大也不卡浏览器。
 - CPU / 内存 / PID / 名称排序 Chip；卡片显示 PID · PPID · 用户，点击展开 RSS / 运行时长 / 命令。
-- 「列表 / 聚合」双视图：按 name+command 分组，展开查看 PID 列表。
+- 「列表 / 聚合」双视图：按 name+command 分组，展开查看 PID 列表、命令、去重用户与总 RSS。
 
 ### Docker（Containers）
 
-- 容器名 / 镜像 / 状态 / health（healthy/unhealthy/starting）/ CPU% / 内存 / 端口。
+- 容器名 / 镜像 / 状态 / health（healthy/unhealthy/starting）/ CPU% / 内存 / 端口。正常停止（退出码 0）显示为「已停止」且不计入异常；崩溃容器显示「已崩溃 (137)」徽标。
 - **端口可操作**：已发布（有 hostPort）的 Web 端口点击在新标签页打开；非 Web 端口点击复制 `host:port`；右键弹出 HTTP/HTTPS 打开 / 复制地址菜单。
 - 正确处理 `127.0.0.1` / `0.0.0.0` / 指定 `hostIp`（IPv6 自动加方括号）；未发布端口显示 🔒 且禁止打开；stats 失败容器显示 ⚠ tooltip。
 

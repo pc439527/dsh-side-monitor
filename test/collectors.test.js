@@ -1,7 +1,7 @@
 import { test } from 'node:test'
 import assert from 'node:assert/strict'
 import { fileURLToPath } from 'node:url'
-import { createSystemCollector, parseCpuInfo } from '../lib/collectors.js'
+import { createSystemCollector, parseCpuInfo, parseExitCode, isIssueContainer, isStoppedContainer } from '../lib/collectors.js'
 
 const FIXTURE = fileURLToPath(new URL('./fixtures/proc/', import.meta.url))
 
@@ -29,6 +29,34 @@ test('parseCpuInfo: no physical id advertised → physical null', () => {
   const info = parseCpuInfo(ARM)
   assert.equal(info.logical, 8)
   assert.equal(info.physical, null)
+})
+
+// ---- v0.3 docker stopped / issue semantic split ---------------------------
+
+test('parseExitCode: extracts exit code from Docker status strings', () => {
+  assert.equal(parseExitCode('Exited (0) 2 hours ago'), 0)
+  assert.equal(parseExitCode('Exited (137) 5 seconds ago'), 137)
+  assert.equal(parseExitCode('Up 2 hours (healthy)'), null)
+  assert.equal(parseExitCode(''), null)
+  assert.equal(parseExitCode(null), null)
+})
+
+test('isIssueContainer / isStoppedContainer: clean stop is NOT an issue', () => {
+  // clean stop (exit 0) → stopped, never an issue
+  assert.equal(isIssueContainer('exited', 'none', 0), false)
+  assert.equal(isStoppedContainer('exited', 0), true)
+  // non-zero exit → issue (crashed), not "stopped"
+  assert.equal(isIssueContainer('exited', 'none', 137), true)
+  assert.equal(isStoppedContainer('exited', 137), false)
+  // crash-loop / dead / unhealthy / health-starting → issues
+  assert.equal(isIssueContainer('restarting', 'none', null), true)
+  assert.equal(isIssueContainer('dead', 'none', null), true)
+  assert.equal(isIssueContainer('running', 'unhealthy', null), true)
+  assert.equal(isIssueContainer('running', 'starting', null), true)
+  // healthy running / paused / created are neither
+  assert.equal(isIssueContainer('running', 'healthy', null), false)
+  assert.equal(isIssueContainer('paused', 'none', null), false)
+  assert.equal(isStoppedContainer('paused', null), false)
 })
 
 // ---- fixture proc tree (host metrics) ------------------------------------
@@ -90,4 +118,30 @@ test('processes: aggregate groups by name+command', () => {
   assert.ok(socat, 'socat group must exist')
   assert.equal(socat.count, 2)
   assert.deepEqual(socat.pids.slice().sort(), [2, 3])
+})
+
+test('processes: aggregate groups carry details (rssBytes + users)', () => {
+  const c = createSystemCollector({ procRoot: FIXTURE })
+  const g = c.processes({ aggregate: true, limit: 50 })
+  const socat = g.groups.find((x) => x.name === 'socat')
+  assert.ok(socat, 'socat group must exist')
+  assert.equal(typeof socat.rssBytes, 'number')
+  assert.ok(socat.rssBytes >= 0, 'rssBytes must be a non-negative number')
+  assert.ok(Array.isArray(socat.users))
+  assert.ok(socat.users.length >= 1, 'users must list at least the group owner')
+})
+
+test('metaInfo: fine-grained status + capabilities (v0.3)', () => {
+  const c = createSystemCollector({ procRoot: FIXTURE })
+  const m = c.metaInfo()
+  assert.ok(m.status, 'status object must exist')
+  assert.ok(m.status.mode === 'host' || m.status.mode === 'container')
+  assert.equal(m.status.systemSource, 'host') // fixture procRoot => host metrics
+  assert.equal(typeof m.status.networkProbe, 'string')
+  assert.ok(m.status.consistency && Array.isArray(m.status.consistency.warnings))
+  assert.ok(m.capabilities, 'capabilities object must exist')
+  assert.equal(m.capabilities.hostMount, true) // fixture uses a host procRoot
+  assert.equal(m.capabilities.processAggregate, true)
+  assert.equal(typeof m.capabilities.dockerSocket, 'boolean')
+  assert.equal(typeof m.capabilities.hostNetNsProbe, 'boolean')
 })
