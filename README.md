@@ -2,16 +2,15 @@
 
 A **read-only system monitor** for DeepSeek Harness (DSH) Web: a “System Monitor” entry in the left sidebar footer opens a right-side monitor drawer that shows live **host** (the machine DSH runs on) overview, process list, and Docker container status.
 
-[![CI](https://github.com/pc439527/dsh-side-monitor/actions/workflows/ci.yml/badge.svg)](https://github.com/pc439527/dsh-side-monitor/actions/workflows/ci.yml)
 [![License: MIT](https://img.shields.io/badge/license-MIT-blue.svg)](LICENSE)
 
 > Read-only by design: no docker restart/stop, no process kill, no exec, no shell. Built for quick resource checks, troubleshooting, and container observation.
 
-## v0.3.0 — stopped/issue split, perf, capabilities & CI drift check
+## v0.3.0 — stopped/issue split, perf, capabilities & drift checks
 
 - **Docker stopped / issue semantic split**: a cleanly stopped container (exit code 0) is now just "Stopped" — it no longer inflates the issue count. Issues are reserved for real problems: unhealthy, health-starting, crash-looping (restarting), dead, or non-zero exits. The Overview + Docker tabs show separate **Total / Running / Stopped / Issues** chips and filters; crashed containers display their exit code (Crashed (137)).
 - **Host network probe performance**: the `--net=host` netns probe now runs at most every 15s (was 5s) and never blocks the overview poll — stale snapshots are reused while the refresh happens in the background, with a baseline guard so the container-netns fallback never diffs against host-netns counters.
-- **Client version auto-sync**: `lib/client.js`'s `CLIENT_VERSION` is regenerated from `package.json` by `tools/sync-generated.mjs` (replaces `tools/convert-i18n.mjs`), which also regenerates the inline i18n dictionary and lints for the no-concatenation rule; CI runs `npm run check:gen` and fails on any drift.
+- **Client version auto-sync**: `lib/client.js`'s `CLIENT_VERSION` is regenerated from `package.json` by `tools/sync-generated.mjs` (replaces `tools/convert-i18n.mjs`), which also regenerates the inline i18n dictionary and lints for the no-concatenation rule; `npm run check:gen` verifies there is no drift.
 - **i18n no-string-concatenation**: every user-visible sentence is a placeholder message — no `t("a") + t("b")` splicing anywhere in the client, enforced by the generator's lint.
 - **Label & header polish**: `Received/Sent` -> `RX/TX`; `DSH Container` -> `DSH running in container` (`DSH on host` -> `DSH running on host`); the status line under the header no longer repeats the data source (it was duplicated with the header badge) and the view label is properly spaced (`Host view`, never `Hostview`).
 - **meta status细分 + capabilities**: the `meta` endpoint reports fine-grained status (mode, per-source state, network probe, consistency) and Host capabilities (Host Mount mode, Docker socket, host-netns probe, process aggregation, container stats) — shown in new Status / Capabilities sections of the About dialog.
@@ -131,7 +130,6 @@ npm run check   # syntax check
 npm test        # node:test unit tests (test/fixtures/proc are real /proc snapshots)
 ```
 
-CI: GitHub Actions (Node 20 / 22) runs check + test automatically.
 
 ## Known Limitations
 

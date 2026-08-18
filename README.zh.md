@@ -2,16 +2,15 @@
 
 DSH（DeepSeek Harness）Web 的**只读系统监控**插件：在左侧 Sidebar 底部提供「系统监控」入口，点击打开右侧监控面板，实时展示**宿主机**（DSH 所在主机）的系统概览、进程列表与 Docker 容器状态。
 
-[![CI](https://github.com/pc439527/dsh-side-monitor/actions/workflows/ci.yml/badge.svg)](https://github.com/pc439527/dsh-side-monitor/actions/workflows/ci.yml)
 [![License: MIT](https://img.shields.io/badge/license-MIT-blue.svg)](LICENSE)
 
 > 全程只读：不提供 docker restart/stop、process kill、exec、shell 等任何控制操作，适合随手查资源、排障和观察容器状态。
 
-## v0.3.0 — 停止/异常语义拆分、性能、能力与 CI 漂移检查
+## v0.3.0 — 停止/异常语义拆分、性能、能力与漂移检查
 
 - **Docker 停止/异常语义拆分**：正常停止（退出码 0）的容器现在只算「已停止」，不再计入「异常」；异常只统计真正的问题——不健康、健康检查中、重启中（崩溃循环）、dead、或非零退出。概览与 Docker 页都展示独立的 **总数 / 运行 / 已停止 / 异常** 徽标与筛选，崩溃容器显示退出码（已崩溃 (137)）。
 - **宿主网络探测性能优化**：`--net=host` 探测从 5s 一次降到最多 15s 一次，且不再阻塞概览轮询——缓存未过期直接复用，过期时后台刷新；并加了基线保护，避免容器 netns 回退与宿主 netns 计数器互相差分产生错误速率。
-- **Client 版本自动同步**：`lib/client.js` 的 `CLIENT_VERSION` 由 `tools/sync-generated.mjs`（取代 `tools/convert-i18n.mjs`）从 `package.json` 重新生成，同时重新生成内联 i18n 字典并做「禁止字符串拼接」lint；CI 通过 `npm run check:gen` 对任何漂移直接报错。
+- **Client 版本自动同步**：`lib/client.js` 的 `CLIENT_VERSION` 由 `tools/sync-generated.mjs`（取代 `tools/convert-i18n.mjs`）从 `package.json` 重新生成，同时重新生成内联 i18n 字典并做「禁止字符串拼接」lint；`npm run check:gen` 可校验无漂移。
 - **i18n 禁止字符串拼接**：所有可见句子都是带占位符的完整消息，客户端不再有 `t("a") + t("b")` 拼接，生成器内置 lint 强制约束。
 - **文案与 Header 打磨**：接口表 `接收/发送` -> `RX/TX`；`DSH Container` -> `DSH running in container`（`DSH on host` -> `DSH running on host`）；Header 下方的状态行不再重复数据来源（此前与徽标的 `Host view` 重复），视角文案修正为正确空格的 `Host view`（不再是 `Hostview`）。
 - **meta 状态细分 + capabilities**：`meta` 端点新增细粒度状态（运行模式、各数据来源、网络探测、一致性）与宿主能力（Host Mount、Docker Socket、宿主 netns 探测、进程聚合、容器实时统计），在「关于」弹窗新增 状态/能力 区块展示。
@@ -131,7 +130,6 @@ npm run check   # 语法检查
 npm test        # node:test 单元测试（test/fixtures/proc 为真实 /proc 快照）
 ```
 
-CI：GitHub Actions（Node 20 / 22）自动运行 check + test。
 
 ## 已知限制
 
