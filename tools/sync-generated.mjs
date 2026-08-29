@@ -1,7 +1,7 @@
 #!/usr/bin/env node
 /**
  * sync-generated.mjs — regenerate the generated parts of lib/client.js and
- * verify there is no drift (v0.3.0).
+ * verify there is no drift (v0.3.1).
  *
  *   1. CLIENT_VERSION  <- package.json version   (client version auto-sync)
  *   2. inline i18n dictionary + t() infrastructure <- lib/i18n.js
@@ -38,8 +38,6 @@ const MAP = [
   ['"复制诊断信息"', 'copyDiagnostics'],
   ['"关于"', 'about'],
   ['"语言"', 'language'],
-  ['"设置 (v0.3)"', 'settingsV03'],
-  ['"设置将在 v0.3 提供"', 'settingsInV03'],
   ['"加载中…"', 'loading'],
   ['"未知错误"', 'unknownError'],
   ['"连接服务不可用"', 'connectionUnavailable'],
@@ -135,7 +133,7 @@ export function generate(src) {
   if (!src.includes('function t(key, vars)')) {
     const infra = [
       '',
-      '        // ---- i18n (v0.3.0) — generated from lib/i18n.js by tools/sync-generated.mjs',
+      '        // ---- i18n (v0.3.1) — generated from lib/i18n.js by tools/sync-generated.mjs',
       '        var LANG_KEY = "dsh-side-monitor:language";',
       '        var LANG_ZH = "zh-CN";',
       '        var LANG_EN = "en-US";',
