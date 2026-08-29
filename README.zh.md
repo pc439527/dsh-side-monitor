@@ -5,6 +5,11 @@ DSH（DeepSeek Harness）Web 的**只读系统监控**插件：在左侧 Sidebar
 [![License: MIT](https://img.shields.io/badge/license-MIT-blue.svg)](LICENSE) [![awesome · DSH plugin](https://awesome-dsh-plugin.com/badge.svg)](https://awesome-dsh-plugin.com)
 
 > 全程只读：不提供 docker restart/stop、process kill、exec、shell 等任何控制操作，适合随手查资源、排障和观察容器状态。
+## v0.3.1 — DSH 0.1.1-rc.2 兼容性适配
+
+- **已在 DeepSeek Harness 0.1.1-rc.2 下验证通过**：`sidebar.footer.action` 插槽（`ctx.slots.inject` + `ctx.slots.register`）、浏览器端 `ctx.connection.rpc.call` 与 Host 端 `connection.rpc.handle` 通道注册均与 0.1.1-rc.2 运行时一致（已实测：`/side-monitor` 的 overview / processes / containers / meta 均返回实时数据）。
+- **移除过时的 `@deepseek-ai/dsh-client-ui-slots` 引用**：该包在 DSH 0.1.1-rc.2 中已不再发布（其插槽运行时已并入 `@deepseek-ai/dsh-client-runtime`）。已从 `dsh.client.inject` 与 `peerDependencies` 中删除，避免全新 `dsh plugin` 安装时解析到 rc.6 时代的遗留包。
+
 
 ## v0.3.0 — 停止/异常语义拆分、性能、能力与漂移检查
 

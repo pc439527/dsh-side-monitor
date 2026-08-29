@@ -1,6 +1,6 @@
 {
   "name": "dsh-side-monitor",
-  "version": "0.3.0",
+  "version": "0.3.1",
   "description": "DSH 系统监控侧边插件：在 Sidebar 提供「系统监控」入口，打开右侧监控面板，实时展示宿主机概览、进程与 Docker 容器状态（只读）",
   "type": "module",
   "main": "lib/index.js",
@@ -37,8 +37,7 @@
     "client": {
       "inject": [
         "@deepseek-ai/dsh-client-runtime",
-        "@deepseek-ai/dsh-client-connection",
-        "@deepseek-ai/dsh-client-ui-slots"
+        "@deepseek-ai/dsh-client-connection"
       ],
       "platform": "web"
     }
@@ -47,7 +46,6 @@
     "@deepseek-ai/cordis": "^4.0.1",
     "@deepseek-ai/dsh-client-connection": "^0.1.0-rc.6",
     "@deepseek-ai/dsh-client-runtime": "^0.1.0-rc.6",
-    "@deepseek-ai/dsh-client-ui-slots": "^0.1.0-rc.6",
     "react": "^18.2.0",
     "react-dom": "^18.2.0"
   }

@@ -5,6 +5,11 @@ A **read-only system monitor** for DeepSeek Harness (DSH) Web: a “System Monit
 [![License: MIT](https://img.shields.io/badge/license-MIT-blue.svg)](LICENSE) [![awesome · DSH plugin](https://awesome-dsh-plugin.com/badge.svg)](https://awesome-dsh-plugin.com)
 
 > Read-only by design: no docker restart/stop, no process kill, no exec, no shell. Built for quick resource checks, troubleshooting, and container observation.
+## v0.3.1 — DSH 0.1.1-rc.2 compat pass
+
+- **Verified against DeepSeek Harness 0.1.1-rc.2**: the `sidebar.footer.action` slot (`ctx.slots.inject` + `ctx.slots.register`), the `ctx.connection.rpc.call` browser contract and the Host `connection.rpc.handle` channel registration all match the 0.1.1-rc.2 runtime (live-tested: `/side-monitor` overview / processes / containers / meta return current data).
+- **Dropped the stale `@deepseek-ai/dsh-client-ui-slots` reference**: the package no longer ships in DSH 0.1.1-rc.2 (its slot runtime merged into `@deepseek-ai/dsh-client-runtime`). Removed it from `dsh.client.inject` and from `peerDependencies` so fresh `dsh plugin` installs resolve cleanly instead of pulling the rc.6-era package.
+
 
 ## v0.3.0 — stopped/issue split, perf, capabilities & drift checks
 
