@@ -131,6 +131,27 @@ test('processes: aggregate groups carry details (rssBytes + users)', () => {
   assert.ok(socat.users.length >= 1, 'users must list at least the group owner')
 })
 
+test('Windows provider: overview, disks and processes return data without /proc', async () => {
+  const c = createSystemCollector({
+    platform: 'win32',
+    windowsProvider: {
+      system: () => ({ Name: 'Test CPU', NumberOfCores: 4, NumberOfLogicalProcessors: 8, MaxClockSpeed: 3200 }),
+      disks: () => [{ DeviceID: 'C:', FileSystem: 'NTFS', Size: 1000, FreeSpace: 250 }],
+      processes: () => [{ ProcessId: 42, ParentProcessId: 4, Name: 'test.exe', CommandLine: 'test.exe --watch', WorkingSetSize: 100, CreationDate: new Date().toISOString(), UserModeTime: 0, KernelModeTime: 0 }],
+    },
+  })
+  const o = await c.overview()
+  assert.equal(o.cpuCores, 8)
+  assert.equal(o.physicalCores, 4)
+  assert.equal(o.diskTotal, 1000)
+  assert.equal(o.diskUsed, 750)
+  assert.equal(o.environment.systemSource, 'host')
+  const p = c.processes({ limit: 10 })
+  assert.equal(p.total, 1)
+  assert.equal(p.processes[0].name, 'test.exe')
+  assert.equal(p.processes[0].ppid, 4)
+})
+
 test('metaInfo: fine-grained status + capabilities (v0.3)', () => {
   const c = createSystemCollector({ procRoot: FIXTURE })
   const m = c.metaInfo()
