@@ -5,6 +5,17 @@ DSH（DeepSeek Harness）Web 的**只读系统监控**插件：在左侧 Sidebar
 [![License: MIT](https://img.shields.io/badge/license-MIT-blue.svg)](LICENSE) [![awesome · DSH plugin](https://awesome-dsh-plugin.com/badge.svg)](https://awesome-dsh-plugin.com)
 
 > 全程只读：不提供 docker restart/stop、process kill、exec、shell 等任何控制操作，适合随手查资源、排障和观察容器状态。
+## v0.4.0 — DSH 0.2.0-rc.2 兼容性适配
+
+- **已在 DeepSeek Harness 0.2.0-rc.2 下对齐运行时契约**：`sidebar.footer.action` 插槽（`ctx.slots.inject` + `ctx.slots.register`）、浏览器端 `ctx.connection.rpc.call` 与 Host 端路由挂载注册均与 0.2 运行时一致（/side-monitor 端点已在真实启动进程上端到端驱动：token 交换、会话 cookie、meta / overview 响应）。
+- **抽屉改为 `shell.overlay` 插槽条目**，不再向 `document.body` 追加第二个 React 应用：0.2 的 UI 规范禁止插件自建应用根，而 shell 的整帧浮层天然带来宿主主题、明暗切换与层叠顺序；该浮层默认点击穿透，只有抽屉自身区域（显式恢复 pointer events）接收点击，面板打开时应用其余部分仍可正常操作。
+- **Host 通道注册采用官方路由挂载模式**：随 DSH 发布的 `dsh-host-open-in-app` 是 0.2 插件挂载浏览器路由的活样例。沿 0.1.x 的走法通过 `connection.rpc.handle()` 触达路由载体行不通：该外壳经由 `owner.webServer` 挂载路由，而 cordis 4 会拒绝在它最终绑定的 shadow 上下文上读取该服务（即使插件已声明），导致通道静默未挂载、面板报'transport failure ... HTTP 405'。v0.4.0 改为声明 `inject = ['connection', 'webServer']`，自注册 `POST /side-monitor/<endpoint>` 前缀路由，先用 `connection.requestRejection` 建立信任围栏再放行任何请求，并按 0.2 客户端线路（`client-request` / `server-response` 信封）通信。
+- **清单修正**：`dsh.client.inject` 与 `peerDependencies` 移除 `@deepseek-ai/dsh-client-runtime`（该包止步于 0.1.1-rc.2）。`inject` 现列出面板所用席位与服务所属的模块——`@deepseek-ai/dsh-client-connection`、`@deepseek-ai/dsh-client-ui-layout`（声明 `shell.overlay`）、`@deepseek-ai/dsh-client-ui-renderer`（提供 `slots` 服务）与 `@deepseek-ai/dsh-client-ui-sidebar`（声明 `sidebar.footer.action`）；`peerDependencies` 将 `@deepseek-ai/dsh-client-connection` 与 `@deepseek-ai/dsh-client-ui-renderer` 固定到 `^0.2.0-rc.2` 版本线，`@deepseek-ai/cordis` 固定为 `~4.0.4`。
+- **主题 token 更新**：已删除的 `--dsw-specific-surface-fill` 替换为 `--dsw-specific-menu`（下拉菜单 / 端口菜单 / 模态框），Toast 改用 `--dsw-alias-toast-bg` / `--dsw-alias-toast-label`；抽屉阴影改用 `--dsw-elevation-panel`。
+- **回归测试**新增：清单字段、挂载路由上的线路契约（信任围栏、媒体类型、信封校验、rpcId 回显）、`shell.overlay` 注册，以及「不存在 document.body React 根」的守护断言。
+
+> 面板目前仍自带 zh-CN / en-US 词典与语言切换（`dsh-side-monitor:language`），尚未接入 0.2 的 Client locale 服务；后续版本计划迁移到 `ctx.locale`，以跟随「设置 → 通用」并出现在语言目录中。
+
 ## v0.3.1 — DSH 0.1.1-rc.2 兼容性适配
 
 - **已在 DeepSeek Harness 0.1.1-rc.2 下验证通过**：`sidebar.footer.action` 插槽（`ctx.slots.inject` + `ctx.slots.register`）、浏览器端 `ctx.connection.rpc.call` 与 Host 端 `connection.rpc.handle` 通道注册均与 0.1.1-rc.2 运行时一致（已实测：`/side-monitor` 的 overview / processes / containers / meta 均返回实时数据）。
@@ -124,7 +135,7 @@ Host Service (lib/collectors.js + lib/rpc.js)
 ## 安全说明
 
 - 浏览器端不直接访问宿主机文件系统或 Docker Socket，所有采集经 Host 端白名单 RPC。
-- Host 端仅暴露 `/side-monitor` 三个只读端点：`overview` / `processes` / `containers`；权限沿用 DSH 标准 `trusted-host`。
+- Host 端在 `/side-monitor` 下仅挂载一条前缀路由、暴露三个只读端点：`overview` / `processes` / `containers`。每个请求都先经 `connection.requestRejection` 围栏——DSH Connection 的 Host/Origin 信任围栏（loopback 与配置的 `--trusted-host` 授权来源）及其浏览器会话鉴权——之后任何内容才可达。
 - 不提供任意命令执行、任意 Docker API 代理或任何控制操作。
 - Host Mount Mode 的 `/host/proc`、`/host/sys`、`/host/root` 必须只读挂载。
 
@@ -143,6 +154,8 @@ npm test        # node:test 单元测试（test/fixtures/proc 为真实 /proc �
 
 ## 更新日志
 
+- **v0.4.0** DSH 0.2.0-rc.2 兼容性适配：抽屉迁入 `shell.overlay` 插槽（不再挂载 document.body 应用根）、Host `handle(channel, handler)` 参数对齐、清单 peer 依赖与 `dsh.client.inject` 指向 0.2 版本线、主题 token 更新。
+- **v0.3.x** 停止/异常语义拆分、宿主机 netns 探测缓存、Client 版本自动同步、i18n 拼接检查、0.1.1-rc.2 兼容。
 - **v0.2.2** 可靠性收口：网络以 `/proc/net/dev` 为事实源（IP 解析失败仍保留接口与流量）；CPU 区分物理核心 / 逻辑 CPU；Docker 端口细化（loopback 锁定、hostIp 去重、uptime 中文化）；RPC 版本握手；进程聚合视图；移动端 `100dvh` + 安全区；fixture 单元测试与 CI。
 - **v0.2.1** 宿主机指标准确性：负载 / 运行时长 / CPU 核心与型号 / 内核 / OS 改读宿主机真实来源；进程运行时长统一宿主机 uptime；网络 IP 改自 `/proc/net/fib_trie` 与 `if_inet6`；磁盘去重改用 mountinfo `major:minor`；来源自检。
 - **v0.2.0** 采集来源标识、CPU / 内存卡片重做、Docker 端口可操作、Host Mount 模式。

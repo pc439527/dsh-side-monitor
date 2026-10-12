@@ -5,6 +5,17 @@ A **read-only system monitor** for DeepSeek Harness (DSH) Web: a “System Monit
 [![License: MIT](https://img.shields.io/badge/license-MIT-blue.svg)](LICENSE) [![awesome · DSH plugin](https://awesome-dsh-plugin.com/badge.svg)](https://awesome-dsh-plugin.com)
 
 > Read-only by design: no docker restart/stop, no process kill, no exec, no shell. Built for quick resource checks, troubleshooting, and container observation.
+## v0.4.0 — DSH 0.2.0-rc.2 compat pass
+
+- **Verified against DeepSeek Harness 0.2.0-rc.2**: the `sidebar.footer.action` slot (`ctx.slots.inject` + `ctx.slots.register`), the `ctx.connection.rpc.call` browser contract and the Host route-mount registration all match the 0.2 runtime (the /side-monitor endpoints were driven end-to-end against a live boot: token exchange, session cookie, meta / overview responses).
+- **The drawer is now a `shell.overlay` slot entry** instead of a second React root appended to `document.body`. The 0.2 UI guide forbids a plugin-owned app root; the shell's frame-wide floating layer gives the drawer the host theme, light/dark switching and stacking for free, and it is click-through until the drawer's own box (which opts back into pointer events) is hit — the rest of the app stays usable while the monitor is open.
+- **Host channel registration follows the shipped route-mount pattern**: the bundled `dsh-host-open-in-app` is the live proof of how 0.2 plugins serve browser routes. Reaching the carrier through `connection.rpc.handle()` (the 0.1.x way) does not work: the facade mounts its route through `owner.webServer`, and cordis 4 refuses that read on the shadow-bound context the facade ends up with (even when the plugin declares it), so the channel silently never mounted and the drawer reported 'transport failure ... HTTP 405'. v0.4.0 instead declares `inject = ['connection', 'webServer']` and registers its own `POST /side-monitor/<endpoint>` prefix route, fenced by `connection.requestRejection` before anything is reachable, speaking the exact 0.2 client wire (`client-request` / `server-response` envelopes).
+- **Manifest fixed**: `dsh.client.inject` and `peerDependencies` dropped `@deepseek-ai/dsh-client-runtime` (it stopped publishing at 0.1.1-rc.2). `inject` now names the modules whose seats and services the panel uses — `@deepseek-ai/dsh-client-connection`, `@deepseek-ai/dsh-client-ui-layout` (declares `shell.overlay`), `@deepseek-ai/dsh-client-ui-renderer` (provides the `slots` service) and `@deepseek-ai/dsh-client-ui-sidebar` (declares `sidebar.footer.action`); `peerDependencies` pin `@deepseek-ai/dsh-client-connection` and `@deepseek-ai/dsh-client-ui-renderer` to the `^0.2.0-rc.2` line and `@deepseek-ai/cordis` to `~4.0.4`.
+- **Theme tokens refreshed**: the removed `--dsw-specific-surface-fill` is replaced by `--dsw-specific-menu` (dropdown, port menu, modal) and the dedicated `--dsw-alias-toast-bg` / `--dsw-alias-toast-label` pair; the drawer shadow uses `--dsw-elevation-panel` instead of a literal.
+- **Regression tests** now guard the manifest, the wire contract on the mounted route (trust fence, media type, envelope validation, rpcId echo), the `shell.overlay` registration and the absence of a `document.body` React root.
+
+> The panel still ships its own zh-CN / en-US dictionary and language switcher (`dsh-side-monitor:language`) rather than the 0.2 Client locale service. Migrating to `ctx.locale` — so the panel follows **Settings → General** and registers in the language catalog — is planned for a later release.
+
 ## v0.3.1 — DSH 0.1.1-rc.2 compat pass
 
 - **Verified against DeepSeek Harness 0.1.1-rc.2**: the `sidebar.footer.action` slot (`ctx.slots.inject` + `ctx.slots.register`), the `ctx.connection.rpc.call` browser contract and the Host `connection.rpc.handle` channel registration all match the 0.1.1-rc.2 runtime (live-tested: `/side-monitor` overview / processes / containers / meta return current data).
@@ -124,7 +135,7 @@ Host Service (lib/collectors.js + lib/rpc.js)
 ## Security
 
 - The browser never touches the host filesystem or the Docker socket directly — all collection goes through the Host-side whitelisted RPC.
-- The Host exposes only three read-only endpoints under `/side-monitor`: `overview` / `processes` / `containers`; permissions follow the standard DSH `trusted-host` role.
+- The Host mounts a single prefix route under `/side-monitor` with three read-only endpoints: `overview` / `processes` / `containers`. Every request is fenced by `connection.requestRejection` — DSH Connection's Host/Origin trust fence (loopback plus configured `--trusted-host` authorities) and its browser-session authentication — before anything is reachable.
 - No arbitrary command execution, no generic Docker API proxy, no control operations.
 - In Host Mount Mode, `/host/proc`, `/host/sys`, and `/host/root` must be mounted read-only.
 
@@ -143,6 +154,8 @@ npm test        # node:test unit tests (test/fixtures/proc are real /proc snapsh
 
 ## Changelog
 
+- **v0.4.0** — DSH 0.2.0-rc.2 compat pass: drawer moved to the `shell.overlay` slot (no `document.body` app root), Host `handle(channel, handler)` arity, manifest peer deps / `dsh.client.inject` retargeted to the 0.2 line, current theme tokens.
+- **v0.3.x** — Stopped/issue split, host netns probe caching, client version auto-sync, i18n lint, 0.1.1-rc.2 compat.
 - **v0.2.2** — Reliability: network uses `/proc/net/dev` as source of truth (interfaces/traffic kept even when IP resolution fails); CPU distinguishes physical cores / logical CPUs; Docker port refinements (loopback locking, hostIp dedup, localized uptime); RPC version handshake; process aggregate view; mobile `100dvh` + safe areas; fixture unit tests and CI.
 - **v0.2.1** — Host metric accuracy: load / uptime / CPU model / kernel / OS read from real host sources; process uptime uses host uptime; network IPs from `/proc/net/fib_trie` and `if_inet6`; disk dedup via mountinfo `major:minor`; source self-check.
 - **v0.2.0** — Source identification, redesigned CPU/memory cards, actionable Docker ports, Host Mount Mode.
