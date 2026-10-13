@@ -36,8 +36,8 @@ test('peerDependencies target the installed DSH 0.2 line', () => {
 
 test('browser half registers slots instead of a second document.body app', () => {
   assert.ok(client.includes('window.__ModuleLoader__.load({'))
-  assert.ok(client.includes('ctx.slots.inject("sidebar.footer.action"'))
-  assert.ok(client.includes('ctx.slots.inject("shell.overlay"'))
+  assert.ok(client.includes('ctx.slots.inject("main"'))
+  assert.ok(client.includes('ctx.slots.inject("sidebar.panellist"'))
   // No second React application: the 0.2 UI guide forbids appending one to
   // document.body. createRoot/react-dom/client must not appear at all.
   assert.equal(/createRoot\s*\(/.test(client), false)

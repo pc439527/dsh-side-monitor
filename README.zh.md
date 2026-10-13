@@ -5,6 +5,22 @@ DSH（DeepSeek Harness）Web 的**只读系统监控**插件：在左侧 Sidebar
 [![License: MIT](https://img.shields.io/badge/license-MIT-blue.svg)](LICENSE) [![awesome · DSH plugin](https://awesome-dsh-plugin.com/badge.svg)](https://awesome-dsh-plugin.com)
 
 > 全程只读：不提供 docker restart/stop、process kill、exec、shell 等任何控制操作，适合随手查资源、排障和观察容器状态。
+## v0.6.0 — 左侧分区导航、丰富的主机指标与历史趋势
+
+- **主面板左侧分区导航**（概览 / 性能 / 进程 / Docker / 硬件与系统）。窄屏（<768px）时导航变为顶部横向条。
+- **性能页**：服务端保存 10 分钟历史（每 2 秒一个样本，仅内存，不落盘），可切换 1 / 5 / 10 分钟；展示 CPU、内存、交换分区、负载、网络与磁盘 IO 趋势，以及每核 CPU 柱状图。
+- **概览**新增交换分区、线程 / 可运行任务数、磁盘 IO 速率、内存分布（空闲 / 缓冲 / 缓存 / 可用）。
+- **硬件与系统**新增 CPU 主频与温度传感器（无法读取时显示“无温度传感器”）。
+- **Docker** 新增守护进程摘要卡片（只读，来自 `/info` 与 `/version`）。
+- RPC 协议升级为 **v4**（加性变更）：新增端点 `history`、`dockerInfo`；`meta.capabilities` 新增 `swap`、`perCpu`、`diskIo`、`temperature`、`history`、`dockerInfo`。仍然只读。
+
+## v0.5.0 — 系统监控改为主面板页
+
+- **入口移入导航组**：位于 插件 / 自动化任务 之后，与上下文洞察使用同一个 `sidebar.panellist` 席位。原底部脚注入口已移除。
+- **监控改为主面板页**（`main` 槽位，key 为 `dsh-side-monitor`），不再是右侧抽屉。页头、视图切换（概览 / 进程 / Docker）、可滚动内容区与响应式卡片对齐上下文洞察布局；宽度拖拽与抽屉动画已删除。
+- 导航行文字使用 thunk（`t("monitorTitle")`），语言切换时无需重新注册。
+- 修复空白页：页面组件曾被写成字符串标签，React 把它当作未知元素渲染。
+
 ## v0.4.0 — DSH 0.2.0-rc.2 兼容性适配
 
 - **已在 DeepSeek Harness 0.2.0-rc.2 下对齐运行时契约**：`sidebar.footer.action` 插槽（`ctx.slots.inject` + `ctx.slots.register`）、浏览器端 `ctx.connection.rpc.call` 与 Host 端路由挂载注册均与 0.2 运行时一致（/side-monitor 端点已在真实启动进程上端到端驱动：token 交换、会话 cookie、meta / overview 响应）。
@@ -120,7 +136,7 @@ fsRoot:   /host/root
 ## 架构
 
 ```text
-Client UI (Sidebar Trigger + Monitor Drawer/Fullscreen + 3 Tabs)
+Client UI (Sidebar Row + Monitor Main-Panel Page + 3 Tabs)
         │  RPC: connection.rpc.call('/side-monitor', ...)
         ▼
 Host Service (lib/collectors.js + lib/rpc.js)

@@ -46,11 +46,12 @@ test('client bundle registers under the package name and injects the 0.2 service
   assert.equal(typeof exports.apply, 'function')
 })
 
-test('apply() fills sidebar.footer.action and shell.overlay, never document.body', () => {
+test('apply() fills main and sidebar.panellist, never document.body', () => {
   const { exports } = loadBundle()
   const injectedSeats = []
   const registrations = []
   const ctx = {
+    connection: { rpc: {} },
     slots: {
       inject(seat, callback) {
         injectedSeats.push(seat)
@@ -66,25 +67,33 @@ test('apply() fills sidebar.footer.action and shell.overlay, never document.body
 
   exports.apply(ctx)
 
-  assert.deepEqual(injectedSeats, ['sidebar.footer.action', 'shell.overlay'])
+  assert.deepEqual(injectedSeats, ['main', 'sidebar.panellist'])
 
-  const trigger = registrations.find((r) => r.options.name === 'sidebar.footer.action')
-  const drawer = registrations.find((r) => r.options.name === 'shell.overlay')
-  assert.ok(trigger && drawer)
-  assert.equal(trigger.options.id, 'side-monitor')
-  assert.equal(drawer.options.id, 'side-monitor')
+  const page = registrations.find((r) => r.options.name === 'main')
+  const row = registrations.find((r) => r.options.name === 'sidebar.panellist')
+  assert.ok(page && row)
+  // The nav row's id must equal the keyed page's key so selectPanel(id)
+  // activates exactly that main-panel page (the context-insight pairing).
+  assert.equal(page.options.key, 'dsh-side-monitor')
+  assert.equal(row.options.id, 'dsh-side-monitor')
+  // The row label is a thunk: live text follows the panel language.
+  assert.equal(typeof row.options.label, 'function')
+  assert.equal(typeof row.options.label(), 'string')
+})
 
-  // The trigger and the drawer share one open/width store through their faces.
-  const triggerFace = trigger.options.inject()
-  const drawerFace = drawer.options.inject()
-  assert.equal(typeof triggerFace.openStore.get().open, 'boolean')
-  assert.equal(drawerFace.ctx, ctx)
-  assert.equal(drawerFace.openStore, triggerFace.openStore)
+test('the main page renders the drawer body component, not a string tag', () => {
+  const src = readFileSync(new URL('../lib/client.js', import.meta.url), 'utf8')
+  // A string first argument makes React render an unknown <MonitorDrawerBody>
+  // element: the page would be blank. The component reference must be used.
+  assert.ok(src.includes('h(MonitorDrawerBody, { page: true'))
+  assert.equal(src.includes('h("MonitorDrawerBody"'), false)
+})
 
-  let notified = 0
-  const unsubscribe = drawerFace.openStore.subscribe(() => { notified += 1 })
-  drawerFace.openStore.update((s) => ({ open: !s.open, width: s.width }))
-  assert.equal(drawerFace.openStore.get().open, true)
-  assert.equal(notified, 1)
-  unsubscribe()
+test('the page root is a flow layout, not the old fixed drawer', () => {
+  const src = readFileSync(new URL('../lib/client.js', import.meta.url), 'utf8')
+  assert.ok(src.includes('return h("div", { className: "dsm-page" },'))
+  assert.equal(src.includes('dsm-root'), false)
+  assert.equal(src.includes('openStore'), false)
+  assert.equal(/\.dsm-root\{[^}]*position:(absolute|fixed)/.test(src), false)
+  assert.equal(src.includes('.dsm-root-mobile'), false)
 })

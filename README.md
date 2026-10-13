@@ -5,6 +5,22 @@ A **read-only system monitor** for DeepSeek Harness (DSH) Web: a “System Monit
 [![License: MIT](https://img.shields.io/badge/license-MIT-blue.svg)](LICENSE) [![awesome · DSH plugin](https://awesome-dsh-plugin.com/badge.svg)](https://awesome-dsh-plugin.com)
 
 > Read-only by design: no docker restart/stop, no process kill, no exec, no shell. Built for quick resource checks, troubleshooting, and container observation.
+## v0.6.0 — Section rail, richer host metrics, history
+
+- **Left section rail** inside the main panel (概览 / 性能 / 进程 / Docker / 硬件与系统). Narrow screens (<768px) turn the rail into a horizontal strip.
+- **Performance view**: 10-minute server-side history (2 s samples, in memory only) with 1 / 5 / 10 minute windows; CPU, memory, swap, load, network and disk IO trends; per-core CPU bars.
+- **Overview** adds swap, threads / runnable tasks, disk IO rates and a memory breakdown (free / buffers / cached / available).
+- **Hardware & system** adds CPU clock and thermal sensors (shows "no sensor" when none are readable).
+- **Docker** adds a daemon summary card (`/info` and `/version`, read-only).
+- RPC protocol **v4** (additive): new endpoints `history` and `dockerInfo`; `meta.capabilities` gains `swap`, `perCpu`, `diskIo`, `temperature`, `history`, `dockerInfo`. Still read-only.
+
+## v0.5.0 — System Monitor as a main panel
+
+- **Entry moved to the navigation group** beside Plugins and Automation tasks, using the same `sidebar.panellist` seat as the context-insight plugin. The old footer trigger is gone.
+- **The monitor is a main-panel page** (keyed `main` slot, key `dsh-side-monitor`) instead of a right-side drawer. Page header, tabs (Overview / Processes / Docker), scrollable body and responsive cards follow the context-insight layout. The width drag handle and drawer animation were removed.
+- The row label is a thunk (`t("monitorTitle")`), so it follows the panel language without re-registration.
+- Fixed a blank page: the page component was passed as a string tag, which React rendered as an unknown element.
+
 ## v0.4.0 — DSH 0.2.0-rc.2 compat pass
 
 - **Verified against DeepSeek Harness 0.2.0-rc.2**: the `sidebar.footer.action` slot (`ctx.slots.inject` + `ctx.slots.register`), the `ctx.connection.rpc.call` browser contract and the Host route-mount registration all match the 0.2 runtime (the /side-monitor endpoints were driven end-to-end against a live boot: token exchange, session cookie, meta / overview responses).
@@ -120,7 +136,7 @@ Once mounted, overview / processes read host resources and the source label swit
 ## Architecture
 
 ```text
-Client UI (Sidebar Trigger + Monitor Drawer/Fullscreen + 3 Tabs)
+Client UI (Sidebar Row + Monitor Main-Panel Page + 3 Tabs)
         │  RPC: connection.rpc.call('/side-monitor', ...)
         ▼
 Host Service (lib/collectors.js + lib/rpc.js)
