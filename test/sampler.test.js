@@ -26,14 +26,39 @@ test('first sample has no prev (unknown, never a fake zero)', () => {
   assert.equal(first.value.v, 0)
 })
 
+test('take() does not hand back an unknown rate once time has advanced', () => {
+  const s = counterSampler(2000)
+  // Very first take at t=50: there is no previous sample at all, so the rate is
+  // genuinely unknown (never a fake zero).
+  s.advance(50, 5)
+  assert.equal(s.sampler.take().value.delta, null)
+
+  // A later poll (still inside the cadence) resolves it by taking a second
+  // sample: the elapsed time since the first is the real interval. Without this
+  // the browser showed "sampling…" for two full cadences after boot.
+  s.advance(50, 5)
+  const resolved = s.sampler.take()
+  assert.equal(typeof resolved.value.delta, 'number')
+  assert.equal(resolved.value.delta, 5 / 0.05)
+})
+
 test('take() reuses the snapshot inside the cadence and resamples after it', () => {
   const s = counterSampler(2000)
+  s.advance(50, 5)
   s.sampler.take()
+  s.advance(50, 5)
+  const settled = s.sampler.take()      // rate resolved
+  assert.equal(settled.value.delta, 100)
+
   s.advance(500, 10)
   const cached = s.sampler.take()
-  assert.equal(cached.value.delta, null, 'inside the cadence the snapshot is reused')
+  assert.equal(cached.value.delta, 100, 'inside the cadence the snapshot is reused (no jitter)')
+  assert.equal(cached, settled)
+
   s.advance(2000, 20)
   const fresh = s.sampler.take()
+  // Measured from the previous SAMPLE (t=100), not from the caller's earlier
+  // reads: 30 units over 2.5 s. This is the property that removes the jitter.
   assert.equal(fresh.value.delta, 30 / 2.5, 'delta is measured against the previous SAMPLE, not the caller')
 })
 
