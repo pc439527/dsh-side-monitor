@@ -1,9 +1,14 @@
 import { test } from 'node:test'
 import assert from 'node:assert/strict'
 import { fileURLToPath } from 'node:url'
+import { mkdtempSync, mkdirSync, writeFileSync, rmSync } from 'node:fs'
+import { tmpdir } from 'node:os'
+import { join } from 'node:path'
 import { createSystemCollector, parseCpuInfo, parseExitCode, isIssueContainer, isStoppedContainer } from '../lib/collectors.js'
+import { dfUsagePercent } from '../lib/metrics.js'
 
 const FIXTURE = fileURLToPath(new URL('./fixtures/proc/', import.meta.url))
+const FIXTURE_SYS = fileURLToPath(new URL('./fixtures/sys/', import.meta.url))
 
 // ---- pure parser fixtures ------------------------------------------------
 
@@ -62,7 +67,7 @@ test('isIssueContainer / isStoppedContainer: clean stop is NOT an issue', () => 
 // ---- fixture proc tree (host metrics) ------------------------------------
 
 test('overview: cpuUsage is null on first sample (unknown, not zero)', async () => {
-  const c = createSystemCollector({ procRoot: FIXTURE })
+  const c = createSystemCollector({ procRoot: FIXTURE, sampleIntervalMs: 0 })
   const o1 = await c.overview()
   assert.equal(o1.cpuUsage, null)
   // second call has a delta → number
@@ -71,7 +76,7 @@ test('overview: cpuUsage is null on first sample (unknown, not zero)', async () 
 })
 
 test('overview: logical/physical cores parsed from fixture cpuinfo', async () => {
-  const c = createSystemCollector({ procRoot: FIXTURE })
+  const c = createSystemCollector({ procRoot: FIXTURE, sampleIntervalMs: 0 })
   const o = await c.overview()
   assert.equal(o.cpuCores, 4)
   assert.equal(o.physicalCores, 2)
@@ -80,7 +85,7 @@ test('overview: logical/physical cores parsed from fixture cpuinfo', async () =>
 })
 
 test('network: interface without IP is still listed (P0: /proc/net/dev is the source of truth)', async () => {
-  const c = createSystemCollector({ procRoot: FIXTURE })
+  const c = createSystemCollector({ procRoot: FIXTURE, sampleIntervalMs: 0 })
   const o = await c.overview()
   const names = o.network.interfaces.map((i) => i.name)
   assert.ok(names.includes('veth123'), 'veth123 must appear even without IP')
@@ -98,7 +103,7 @@ test('network: interface without IP is still listed (P0: /proc/net/dev is the so
 })
 
 test('processes: search/sort/pagination with source + ppid', () => {
-  const c = createSystemCollector({ procRoot: FIXTURE })
+  const c = createSystemCollector({ procRoot: FIXTURE, sampleIntervalMs: 0 })
   const p = c.processes({ query: '', sort: 'cpu', order: 'desc', limit: 10 })
   assert.equal(p.total, 3)
   assert.equal(p.source, 'host')
@@ -111,7 +116,7 @@ test('processes: search/sort/pagination with source + ppid', () => {
 })
 
 test('processes: aggregate groups by name+command', () => {
-  const c = createSystemCollector({ procRoot: FIXTURE })
+  const c = createSystemCollector({ procRoot: FIXTURE, sampleIntervalMs: 0 })
   const g = c.processes({ aggregate: true, limit: 50 })
   assert.equal(g.aggregate, true)
   const socat = g.groups.find((x) => x.name === 'socat')
@@ -121,7 +126,7 @@ test('processes: aggregate groups by name+command', () => {
 })
 
 test('processes: aggregate groups carry details (rssBytes + users)', () => {
-  const c = createSystemCollector({ procRoot: FIXTURE })
+  const c = createSystemCollector({ procRoot: FIXTURE, sampleIntervalMs: 0 })
   const g = c.processes({ aggregate: true, limit: 50 })
   const socat = g.groups.find((x) => x.name === 'socat')
   assert.ok(socat, 'socat group must exist')
@@ -152,8 +157,73 @@ test('Windows provider: overview, disks and processes return data without /proc'
   assert.equal(p.processes[0].ppid, 4)
 })
 
+test('data source: bare /proc + host runtime is labelled host (v0.7 fix)', async () => {
+  const host = createSystemCollector({ procRoot: FIXTURE, hostMetrics: false, runtimeMode: 'host', sampleIntervalMs: 0 })
+  const ho = await host.overview()
+  assert.equal(ho.environment.systemSource, 'host')
+  assert.equal(ho.environment.processSource, 'host')
+  assert.equal(host.processes({ limit: 1 }).source, 'host')
+  assert.equal(host.processes({ aggregate: true, limit: 1 }).source, 'host')
+
+  const cont = createSystemCollector({ procRoot: FIXTURE, hostMetrics: false, runtimeMode: 'container', sampleIntervalMs: 0 })
+  const co = await cont.overview()
+  assert.equal(co.environment.systemSource, 'container')
+  assert.equal(co.environment.processSource, 'container')
+  assert.equal(cont.processes({ limit: 1 }).source, 'container')
+  assert.equal(cont.metaInfo().status.systemSource, 'container')
+})
+
+test('disk: pseudo mounts filtered, avail reported, usage follows df', async () => {
+  const root = mkdtempSync(join(tmpdir(), 'dsm-root-'))
+  const proc = mkdtempSync(join(tmpdir(), 'dsm-proc-'))
+  try {
+    mkdirSync(join(root, 'data'))
+    writeFileSync(join(proc, 'mounts'), [
+      'sysfs /sys sysfs rw 0 0',
+      'efivarfs /sys/firmware/efi/efivars efivarfs rw 0 0',
+      'proc /proc proc rw 0 0',
+      'devtmpfs /dev devtmpfs rw 0 0',
+      'tmpfs /run tmpfs rw 0 0',
+      'fuse.portal /run/user/1000/gvfs fuse.portal rw 0 0',
+      '/dev/sdb1 /data ext4 rw 0 0',
+    ].join('\n') + '\n')
+    const c = createSystemCollector({ procRoot: proc, fsRoot: root, sampleIntervalMs: 0 })
+    const o = await c.overview()
+    assert.equal(o.disks.length, 1, 'only the real data mount survives: ' + JSON.stringify(o.disks))
+    const data = o.disks[0]
+    assert.equal(data.mount, '/data')
+    assert.equal(data.filesystem, 'ext4')
+    assert.equal(typeof data.avail, 'number')
+    // bavail <= bfree on ext4 (reserved blocks) — avail is the df denominator.
+    assert.ok(data.avail <= data.free)
+    assert.ok(data.avail >= 0)
+    assert.equal(data.usage, dfUsagePercent(data.used, data.avail))
+    assert.equal(o.diskAvailable, true)
+    assert.equal(o.diskUsage, data.usage)
+    assert.ok(!o.disks.some((d) => d.mount.startsWith('/sys') || d.mount === '/proc' || d.mount === '/dev' || d.mount === '/run'))
+  } finally {
+    rmSync(root, { recursive: true, force: true })
+    rmSync(proc, { recursive: true, force: true })
+  }
+})
+
+test('temperatures: hwmon labels and thermal zones get friendly keys (v0.7)', async () => {
+  const c = createSystemCollector({ procRoot: FIXTURE, sysRoot: FIXTURE_SYS, sampleIntervalMs: 0 })
+  const o = await c.overview()
+  const byName = new Map(o.temperatures.map((t) => [t.name, t]))
+  assert.equal(byName.get('x86_pkg_temp').key, 'cpuPackage')
+  assert.equal(byName.get('x86_pkg_temp').celsius, 45)
+  assert.equal(byName.get('x86_pkg_temp').source, 'thermal')
+  assert.equal(byName.get('acpitz').key, 'mainboardAcpi')
+  assert.equal(byName.get('Composite').key, 'nvme')
+  assert.equal(byName.get('Composite').source, 'hwmon')
+  assert.equal(byName.get('Composite').celsius, 38.8)
+  assert.equal(byName.get('Package id 0').key, 'cpuPackage')
+  assert.equal(byName.get('Package id 0').celsius, 46)
+})
+
 test('metaInfo: fine-grained status + capabilities (v0.3)', () => {
-  const c = createSystemCollector({ procRoot: FIXTURE })
+  const c = createSystemCollector({ procRoot: FIXTURE, sampleIntervalMs: 0 })
   const m = c.metaInfo()
   assert.ok(m.status, 'status object must exist')
   assert.ok(m.status.mode === 'host' || m.status.mode === 'container')

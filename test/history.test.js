@@ -1,6 +1,6 @@
 import { test } from 'node:test'
 import assert from 'node:assert/strict'
-import { createRpcHandler, historySample, ENDPOINTS, PROTOCOL_VERSION, HISTORY_MAX_SINCE_SECONDS } from '../lib/rpc.js'
+import { createRpcHandler, historySample, startHistorySampler, ENDPOINTS, PROTOCOL_VERSION, HISTORY_MAX_SINCE_SECONDS } from '../lib/rpc.js'
 import { SampleRing } from '../lib/metrics.js'
 
 test('protocol v4 and the new endpoints are declared', () => {
@@ -45,4 +45,17 @@ test('historySample maps the primary interface and disk IO; missing fields stay 
   assert.equal(empty.netRx, null)
   assert.equal(empty.diskRead, null)
   assert.equal(empty.swap, null)
+})
+
+test('history is fed by the collector sampler subscription when available (v0.7)', async () => {
+  const ring = new SampleRing(10)
+  let listener = null
+  let unsubscribed = false
+  const collector = { subscribeMetrics(fn) { listener = fn; return () => { unsubscribed = true } } }
+  const stop = startHistorySampler(collector, ring)
+  listener({ cpuUsage: 12, memoryUsage: 40, network: { interfaces: [] } })
+  assert.equal(ring.size, 1)
+  assert.equal(ring.items[0].cpu, 12)
+  stop()
+  assert.equal(unsubscribed, true)
 })

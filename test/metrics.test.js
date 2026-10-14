@@ -1,8 +1,9 @@
 import { test } from 'node:test'
 import assert from 'node:assert/strict'
 import {
-  parseProcStatCpus, cpuPercent, isWholeDisk, parseDiskstats, rateBetween,
-  parseLoadavgTasks, normalizeThermal, SampleRing,
+  parseProcStatCpus, parseProcStatAggregate, cpuPercent, cpuTimesPercent,
+  isWholeDisk, parseDiskstats, rateBetween, parseLoadavgTasks, normalizeThermal,
+  thermalKey, parseVmstat, pageRate, dfUsagePercent, SampleRing,
 } from '../lib/metrics.js'
 
 const STAT = [
@@ -60,13 +61,86 @@ test('parseLoadavgTasks: running/total from 4th field', () => {
   assert.deepEqual(parseLoadavgTasks('garbage'), { running: null, total: null })
 })
 
-test('normalizeThermal: milli-celsius to celsius, implausible dropped', () => {
+test('normalizeThermal: milli-celsius to celsius, friendly key, implausible dropped', () => {
   const r = normalizeThermal([
     { type: 'x86_pkg_temp', milliCelsius: 45250 },
     { type: 'broken', milliCelsius: NaN },
     { type: 'hot', milliCelsius: 200000 },
   ])
-  assert.deepEqual(r, [{ name: 'x86_pkg_temp', celsius: 45.3 }])
+  assert.deepEqual(r, [{
+    key: 'cpuPackage', name: 'x86_pkg_temp', type: 'x86_pkg_temp',
+    label: null, source: 'thermal', celsius: 45.3,
+  }])
+})
+
+test('normalizeThermal: hwmon chip name + temp*_label map to friendly keys', () => {
+  const r = normalizeThermal([
+    { type: 'acpitz', milliCelsius: 30500, source: 'thermal' },
+    { type: 'nvme', label: 'Composite', milliCelsius: 38800, source: 'hwmon' },
+    { type: 'coretemp', label: 'Package id 0', milliCelsius: 46000, source: 'hwmon' },
+    { type: 'weird_chip', milliCelsius: 41000, source: 'hwmon' },
+  ])
+  assert.deepEqual(r.map((x) => [x.key, x.name, x.source]), [
+    ['mainboardAcpi', 'acpitz', 'thermal'],
+    ['nvme', 'Composite', 'hwmon'],
+    ['cpuPackage', 'Package id 0', 'hwmon'],
+    [null, 'weird_chip', 'hwmon'],
+  ])
+  // an exact duplicate of the same sensor (thermal_zone + hwmon) collapses
+  assert.equal(normalizeThermal([
+    { type: 'x86_pkg_temp', milliCelsius: 45000 },
+    { type: 'x86_pkg_temp', milliCelsius: 45000, source: 'hwmon' },
+  ]).length, 1)
+})
+
+test('thermalKey: known chips map, unknown stays null', () => {
+  assert.equal(thermalKey('x86_pkg_temp', null), 'cpuPackage')
+  assert.equal(thermalKey('acpitz', null), 'mainboardAcpi')
+  assert.equal(thermalKey('foo', 'NVMe Composite'), 'nvme')
+  assert.equal(thermalKey('foo', 'bar'), null)
+})
+
+test('parseProcStatAggregate: full /proc/stat field set with total', () => {
+  const a = parseProcStatAggregate(STAT)
+  assert.equal(a.user, 100)
+  assert.equal(a.nice, 0)
+  assert.equal(a.system, 50)
+  assert.equal(a.idle, 800)
+  assert.equal(a.iowait, 50)
+  assert.equal(a.steal, 0)
+  assert.equal(a.total, 1000)
+  assert.equal(parseProcStatAggregate('cpuN 1 2 3 4'), null)
+  assert.equal(parseProcStatAggregate(''), null)
+})
+
+test('cpuTimesPercent: deltas normalise to a composition summing to 100', () => {
+  const prev = { user: 100, nice: 0, system: 50, idle: 800, iowait: 50, irq: 0, softirq: 0, steal: 0, total: 1000 }
+  const cur = { user: 200, nice: 0, system: 100, idle: 900, iowait: 100, irq: 0, softirq: 0, steal: 0, total: 1300 }
+  const t = cpuTimesPercent(prev, cur)
+  assert.equal(t.user, 33.3)
+  assert.equal(t.system, 16.7)
+  assert.equal(t.iowait, 16.7)
+  assert.equal(t.idle, 33.3)
+  assert.ok(Math.abs(Object.values(t).reduce((a, b) => a + b, 0) - 100) < 0.2)
+  assert.equal(cpuTimesPercent(null, cur), null)
+  assert.equal(cpuTimesPercent(prev, prev), null)
+})
+
+test('parseVmstat + pageRate: swap paging counters to bytes/sec', () => {
+  const v = parseVmstat('pswpin 100\npswpout 250\npgpgin 1\n')
+  assert.deepEqual(v, { pswpin: 100, pswpout: 250 })
+  assert.deepEqual(parseVmstat(null), {})
+  assert.equal(pageRate(100, 300, 2), (200 * 4096) / 2)
+  assert.equal(pageRate(300, 100, 2), 0)
+  assert.equal(pageRate(null, 300, 2), null)
+  assert.equal(pageRate(100, 300, 0), null)
+})
+
+test('dfUsagePercent: used/(used+avail), not used/total', () => {
+  // ext4 reserves ~5%: 90 used, 5 avail -> df says 94.7%, used/total says 90%
+  assert.equal(dfUsagePercent(90, 5), 94.7)
+  assert.equal(dfUsagePercent(0, 0), 0)
+  assert.equal(dfUsagePercent(null, 100), 0)
 })
 
 test('SampleRing: bounded, since() filters by age', () => {
