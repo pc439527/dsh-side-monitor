@@ -5,10 +5,11 @@
   "type": "module",
   "main": "lib/index.js",
   "scripts": {
-    "check": "node --check lib/index.js && node --check lib/rpc.js && node --check lib/collectors.js && node --check lib/client.js",
+    "check": "node --check lib/index.js && node --check lib/rpc.js && node --check lib/collectors.js && node --check lib/sampler.js && node --check lib/metrics.js && node --check lib/client.js",
     "test": "node --test",
-    "sync:gen": "node tools/sync-generated.mjs",
-    "check:gen": "node tools/sync-generated.mjs --check"
+    "sync:gen": "node tools/sync-generated.mjs && node tools/build-client.mjs",
+    "check:gen": "node tools/sync-generated.mjs --check && node tools/build-client.mjs --check",
+    "build:client": "node tools/build-client.mjs"
   },
   "exports": {
     ".": {
@@ -50,5 +51,8 @@
     "@deepseek-ai/dsh-client-ui-renderer": "^0.2.0-rc.2",
     "react": "^18.2.0",
     "react-dom": "^18.2.0"
+  },
+  "devDependencies": {
+    "esbuild": "^0.28.2"
   }
 }

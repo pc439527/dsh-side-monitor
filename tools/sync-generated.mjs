@@ -20,7 +20,7 @@
 import { readFileSync, writeFileSync } from 'node:fs'
 import { messages } from '../lib/i18n.js'
 
-const CLIENT = new URL('../lib/client.js', import.meta.url).pathname
+const CLIENT = new URL('../src/client/index.js', import.meta.url).pathname
 const PKG = JSON.parse(readFileSync(new URL('../package.json', import.meta.url), 'utf8'))
 const VERSION = PKG.version
 
