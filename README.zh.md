@@ -5,6 +5,27 @@ DSH（DeepSeek Harness）Web 的**只读系统监控**插件：在左侧 Sidebar
 [![License: MIT](https://img.shields.io/badge/license-MIT-blue.svg)](LICENSE) [![awesome · DSH plugin](https://awesome-dsh-plugin.com/badge.svg)](https://awesome-dsh-plugin.com)
 
 > 全程只读：不提供 docker restart/stop、process kill、exec、shell 等任何控制操作，适合随手查资源、排障和观察容器状态。
+## v0.7.0 — 数据口径修复、固定节拍采样器与构建流水线
+
+**数据正确性（对应上表每一个现象的根因）**
+- **「宿主机」与「容器数据」互相矛盾**：`/proc` 就是 `/proc` 并不能证明 DSH 跑在容器里。裸机上的 DSH 没有 `/host/proc`，于是被判成 container，可它自己的进程表里明明有 `dockerd`、`tailscaled`。现在统一用 `viewIsHost = hostMetrics || detectMode() === 'host'`，`systemSource`、`processSource` 以及进程/容器返回里的 `source` 全部改用它。
+- **CPU 读数跳动（6.8% ↔ 17.7%）**：CPU、磁盘 IO、网络与交换分区的速率都是有状态的，而 2 秒历史采样器和浏览器轮询都在算差值，间隔忽长忽短。新增 **固定节拍采样器**（`lib/sampler.js`）：由它唯一持有前值并驱动唯一的 2 秒循环，`overview()` 直接返回最新快照，不再在请求路径里做差值运算；历史环形缓冲也通过 `subscribeMetrics()` 由同一个时钟喂。
+- **Docker 的 CPU / 内存列显示「—」**：同步等待 26 个容器的 stats（并发 4）要十几秒。现在改为**后台采集**，且只在最近 30 秒有人看 Docker 页时才跑；CPU% 由 Host 端自己保存累计值算差值（`precpu_stats` 在多次 one-shot 请求之间不可靠，仅在首次采样时用作兜底，让数字立刻可见）。`containers` 立刻返回缓存（约 35 ms），并附带 `statsAgeMs`。
+- **磁盘分区**：`PSEUDO_FS` 补上 `efivarfs`，并按 `/sys`、`/proc`、`/dev`、`/run` 前缀过滤，`/sys/firmware/efi/efivars` 不再出现。新增 `avail` 字段，用量改为 **df 口径** —— `used / (used + avail)`，而不是 `used / total`；ext4 有保留块时两者差别明显。
+- **温度名称**：除 `thermal_zone*/type` 外，还读取 `/sys/class/hwmon` 的 `name` 与 `temp*_label`，并做友好名映射：`x86_pkg_temp`/`coretemp` → 「CPU 封装」，`acpitz` → 「主板 ACPI」，`nvme` → 「NVMe 固态」。
+- **交换分区卡片**：改画 `/proc/vmstat` 的 `pswpin` / `pswpout` 换入换出速率，不再是一张永远空的图。
+- **新增数据**：`cpuTimes`（user / system / irq / iowait / steal / idle 构成，供 CPU 时间构成甜甜圈用）与 `swapIo` 速率。
+- **复制诊断**：`buildDiagnostic` 对首个样本前的 null `cpuUsage` 做了保护，不再抛错。
+
+**界面**
+- 顶部告警条：磁盘 ≥ 90%、交换分区 ≥ 50% 且内存 ≥ 85%、温度 ≥ 85°C、容器 unhealthy（阈值先在前端计算）。
+- 记住上次所在的视图（`localStorage`，存储不可用时静默忽略）。
+- 迷你图历史从 `history` 接口预填，切页不再从空曲线开始。
+- 未取到数据时显示「采样中…」，不再用「—」。
+
+**工程**
+- 浏览器端迁到 `src/client/`，用 esbuild 打包为 `lib/client.js`（DSH 模块表要求的单个 IIFE）。`npm run check:gen` 同时校验生成的 i18n/版本部分与打包产物是否漂移。
+
 ## v0.6.0 — 左侧分区导航、丰富的主机指标与历史趋势
 
 - **主面板左侧分区导航**（概览 / 性能 / 进程 / Docker / 硬件与系统）。窄屏（<768px）时导航变为顶部横向条。
@@ -128,10 +149,11 @@ fsRoot:   /host/root
 
 | 数据 | 频率 |
 | --- | --- |
-| CPU / 内存 / 网络 / 负载 / Uptime | 2s |
+| CPU / 内存 / 网络 / 负载 / Uptime | 2s（固定节拍采样器） |
 | 磁盘 | 10s（Host 端缓存） |
 | 进程列表 | 3s（Host 端 Snapshot Cache） |
-| Docker 列表 + stats | 5s（stats 3s 缓存） |
+| Docker 列表 | 5s（Host 端缓存） |
+| Docker stats | 5s 后台刷新，仅在 Docker 页打开时运行（30 秒窗口）；请求直接读缓存 |
 
 ## 架构
 
@@ -139,7 +161,7 @@ fsRoot:   /host/root
 Client UI (Sidebar Row + Monitor Main-Panel Page + 3 Tabs)
         │  RPC: connection.rpc.call('/side-monitor', ...)
         ▼
-Host Service (lib/collectors.js + lib/rpc.js)
+Host Service (lib/collectors.js + lib/rpc.js + lib/sampler.js)
   ├─ Environment        (mode / systemSource / processSource / dockerSource / hostname)
   ├─ Overview Collector (procRoot/stat|meminfo|loadavg|uptime|cpuinfo|sys/kernel/osrelease + fsRoot/etc/os-release + net/dev|net/route + mounts/statfs)
   ├─ Process Collector  (procRoot/<pid>/stat|status|cmdline，Host 端搜索/排序/分页，含 PPID)
@@ -158,15 +180,20 @@ Host Service (lib/collectors.js + lib/rpc.js)
 ## 开发
 
 ```sh
-npm run check   # 语法检查
-npm test        # node:test 单元测试（test/fixtures/proc 为真实 /proc 快照）
+npm run check          # 语法检查
+npm test               # node:test 单元测试（test/fixtures/proc、test/fixtures/sys 为真实快照）
+npm run build:client   # esbuild 打包 src/client -> lib/client.js
+npm run sync:gen       # 重新生成 i18n/版本部分并重新打包
+npm run check:gen      # 生成部分或打包产物漂移时失败（CI 用）
 ```
+
+浏览器端请改 `src/client/`；`lib/client.js` 是构建产物。
 
 
 ## 已知限制
 
 - 完整宿主 PID 视图可通过 `pid: host` 获得，但默认不强制开启；开启后一致性自检会提示 PID 命名空间未隔离。
-- 宿主 / 容器进程双视角切换、设置页、历史趋势、DSH 原生 Side Card 集成留待后续版本。
+- 分层历史（24 小时 / 30 天）、落盘 `historyDir`、热力图、Host 端告警与 `dockerDf`、DSH 自身占用卡片、设置页留待 v0.8 / v0.9。
 
 ## 更新日志
 

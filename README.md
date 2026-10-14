@@ -5,6 +5,27 @@ A **read-only system monitor** for DeepSeek Harness (DSH) Web: a “System Monit
 [![License: MIT](https://img.shields.io/badge/license-MIT-blue.svg)](LICENSE) [![awesome · DSH plugin](https://awesome-dsh-plugin.com/badge.svg)](https://awesome-dsh-plugin.com)
 
 > Read-only by design: no docker restart/stop, no process kill, no exec, no shell. Built for quick resource checks, troubleshooting, and container observation.
+## v0.7.0 — Accuracy fixes, fixed-cadence sampler, build pipeline
+
+**Data correctness (the reported symptoms, and their root causes)**
+- **"Host" vs "container" contradiction**: a `/proc` that is literally `/proc` does not prove DSH runs in a container. DSH on bare metal has no `/host/proc` and was mislabelled "container" while its own process list showed `dockerd` / `tailscaled`. The source label is now `viewIsHost = hostMetrics || detectMode() === 'host'`, applied consistently to `systemSource`, `processSource` and the process/container payload `source`.
+- **CPU jitter (6.8% ↔ 17.7%)**: CPU / disk-IO / network / swap rates are stateful, and the 2 s history sampler plus the browser poll were both diffing them at uneven intervals. A new **fixed-cadence sampler** (`lib/sampler.js`) solely owns the previous raw counters and the single 2 s loop; `overview()` returns the latest snapshot and never does rate maths on the request path. The history ring is fed by the same clock via `subscribeMetrics()`.
+- **Docker CPU/memory showing "—"**: awaiting one-shot stats for every container took >10 s (26 containers, concurrency 4). Stats are now collected **in the background**, only while someone is on the Docker view (30 s window), with the Host computing CPU% from its own cumulative totals (Docker's `precpu_stats` is not reliable across separate one-shot requests; it is used only for the very first sample so values appear immediately). `containers` returns the cache instantly (~35 ms) plus `statsAgeMs`.
+- **Disk partitions**: `efivarfs` added to the pseudo-filesystem list, and `/sys`, `/proc`, `/dev`, `/run` prefixes are filtered, so `/sys/firmware/efi/efivars` no longer appears. Mounts now report `avail`, and usage follows **df semantics** — `used / (used + avail)` instead of `used / total`, which matters on ext4 with reserved blocks.
+- **Temperature names**: `/sys/class/hwmon` chip `name` plus `temp*_label` are read alongside `thermal_zone*/type`, and sensors get a localisable key — `x86_pkg_temp`/`coretemp` → "CPU 封装" (CPU package), `acpitz` → "主板 ACPI" (Mainboard ACPI), `nvme` → "NVMe 固态".
+- **Swap card**: shows swap-in / swap-out rates from `/proc/vmstat` (`pswpin`/`pswpout`) instead of a permanently empty chart.
+- **New data**: `cpuTimes` (user / system / irq / iowait / steal / idle composition) for the CPU-time donut, and `swapIo` rates.
+- **Diagnostics**: `buildDiagnostic` no longer throws on a null `cpuUsage` before the first sample.
+
+**UI**
+- Alert bar for disk ≥ 90%, swap ≥ 50% with memory ≥ 85%, temperature ≥ 85 °C, and unhealthy containers (thresholds computed in the browser).
+- Last-viewed tab is remembered (`localStorage`, storage failures ignored).
+- Mini-chart history is prefilled from the `history` endpoint, so switching views no longer starts from an empty sparkline.
+- Missing values show "采样中…" (sampling) instead of "—".
+
+**Engineering**
+- The browser half moved to `src/client/` and is bundled with esbuild into `lib/client.js` (single IIFE for the DSH module table). `npm run check:gen` verifies both the generated i18n/version parts and bundle drift.
+
 ## v0.6.0 — Section rail, richer host metrics, history
 
 - **Left section rail** inside the main panel (概览 / 性能 / 进程 / Docker / 硬件与系统). Narrow screens (<768px) turn the rail into a horizontal strip.
@@ -128,10 +149,11 @@ Once mounted, overview / processes read host resources and the source label swit
 
 | Data | Interval |
 | --- | --- |
-| CPU / memory / network / load / uptime | 2s |
+| CPU / memory / network / load / uptime | 2s (fixed-cadence sampler) |
 | Disk | 10s (Host-side cache) |
 | Process list | 3s (Host-side snapshot cache) |
-| Docker list + stats | 5s (stats 3s cache) |
+| Docker list | 5s (Host-side cache) |
+| Docker stats | 5s background refresh, only while the Docker view is open (30s window); requests read the cache |
 
 ## Architecture
 
@@ -139,7 +161,7 @@ Once mounted, overview / processes read host resources and the source label swit
 Client UI (Sidebar Row + Monitor Main-Panel Page + 3 Tabs)
         │  RPC: connection.rpc.call('/side-monitor', ...)
         ▼
-Host Service (lib/collectors.js + lib/rpc.js)
+Host Service (lib/collectors.js + lib/rpc.js + lib/sampler.js)
   ├─ Environment        (mode / systemSource / processSource / dockerSource / hostname)
   ├─ Overview Collector (procRoot/stat|meminfo|loadavg|uptime|cpuinfo|sys/kernel/osrelease + fsRoot/etc/os-release + net/dev|net/route + mounts/statfs)
   ├─ Process Collector  (procRoot/<pid>/stat|status|cmdline, host-side search/sort/pagination, PPID included)
@@ -158,9 +180,14 @@ Host Service (lib/collectors.js + lib/rpc.js)
 ## Development
 
 ```sh
-npm run check   # syntax check
-npm test        # node:test unit tests (test/fixtures/proc are real /proc snapshots)
+npm run check          # syntax check
+npm test               # node:test unit tests (test/fixtures/proc are real /proc snapshots)
+npm run build:client   # bundle src/client -> lib/client.js (esbuild)
+npm run sync:gen       # regenerate generated i18n/version parts + rebuild
+npm run check:gen      # fail on generated-part or bundle drift (use in CI)
 ```
+
+Edit the browser half in `src/client/`; `lib/client.js` is a build artifact.
 
 
 ## Known Limitations
