@@ -5,6 +5,27 @@ A **read-only system monitor** for DeepSeek Harness (DSH) Web: a “System Monit
 [![License: MIT](https://img.shields.io/badge/license-MIT-blue.svg)](LICENSE) [![awesome · DSH plugin](https://awesome-dsh-plugin.com/badge.svg)](https://awesome-dsh-plugin.com)
 
 > Read-only by design: no docker restart/stop, no process kill, no exec, no shell. Built for quick resource checks, troubleshooting, and container observation.
+## v0.6.2 — macOS (Darwin) support
+
+macOS has no `/proc`, so every Linux reader used to come back empty there (CPU "sampling…", no disk, 0 processes, no interfaces). This release adds a native **Darwin provider** (`lib/darwin.js`) that returns the same shapes from Apple's own tooling:
+
+| Metric | Source |
+| --- | --- |
+| CPU % / per-core | `node:os` per-core tick times (same delta maths as `/proc/stat`) |
+| CPU model / cores / clock | `sysctl machdep.cpu.brand_string`, `hw.physicalcpu`, `hw.logicalcpu` |
+| Memory | `vm_stat` page counts + `sysctl hw.memsize` (available = free + inactive + speculative + purgeable) |
+| Swap | `sysctl vm.swapusage` |
+| Load / uptime | `getloadavg(3)` / `node:os` |
+| Disks | `df -k`, APFS-aware: the `/System/Volumes/Data` volume becomes the single `/` row (system volume and `/System/Volumes/*` noise are dropped) |
+| Network | `netstat -ib` byte counters + `os.networkInterfaces()` addresses; primary = default-route NIC, never a VPN `utun` |
+| Processes | `ps -A -o pid,ppid,user,%cpu,%mem,rss,etime,state,command` |
+| Threads / runnable | `sysctl kern.num_threads` + `R` states from `ps` |
+| Docker | Docker Desktop sockets (`~/.docker/run/docker.sock`, `/var/run/docker.sock`, `DOCKER_HOST`) |
+
+Not available without root on macOS and reported honestly as unknown: per-disk **read/write** counters (`iostat` has no split) and **thermal sensors** (`powermetrics` needs privileges). The About dialog's capabilities reflect this.
+
+An explicit `procRoot` still forces the Linux readers, so the `/proc` fixture tests run on any host.
+
 ## v0.6.1 — DSH 0.2.2-rc.1 compat pass
 
 Compatibility-only release against the installed **DeepSeek Harness 0.2.2-rc.1** (`@deepseek-ai/cordis` 4.1.0). The full runtime surface was re-verified against the shipped packages and **no runtime code change was needed** — only the manifest's version declarations were retargeted:
@@ -182,6 +203,7 @@ npm test        # node:test unit tests (test/fixtures/proc are real /proc snapsh
 
 ## Changelog
 
+- **v0.6.2** — macOS support: native Darwin provider (sysctl / vm_stat / df / ps / netstat), APFS-aware disks, per-core CPU, swap, processes, Docker Desktop sockets.
 - **v0.6.1** — DSH 0.2.2-rc.1 compat pass: `engines.dsh` + cordis 4.1.0 / DSH client 0.2.2-rc.1 peer line; generator path fix; runtime surface re-verified (no code change needed).
 - **v0.6.0** — Section rail, 10-minute history, richer host metrics, RPC protocol v4.
 - **v0.5.0** — System Monitor became a keyed main panel with a `sidebar.panellist` nav row.

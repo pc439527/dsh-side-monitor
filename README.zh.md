@@ -5,6 +5,27 @@ DSH（DeepSeek Harness）Web 的**只读系统监控**插件：在左侧 Sidebar
 [![License: MIT](https://img.shields.io/badge/license-MIT-blue.svg)](LICENSE) [![awesome · DSH plugin](https://awesome-dsh-plugin.com/badge.svg)](https://awesome-dsh-plugin.com)
 
 > 全程只读：不提供 docker restart/stop、process kill、exec、shell 等任何控制操作，适合随手查资源、排障和观察容器状态。
+## v0.6.2 — macOS（Darwin）支持
+
+macOS 没有 `/proc`，此前所有 Linux 读取器在 Mac 上全部落空（CPU 一直"采样中"、无磁盘、0 个进程、无网卡）。本版新增原生 **Darwin provider**（`lib/darwin.js`），用 Apple 自带工具返回与 Linux 相同的数据结构：
+
+| 指标 | 来源 |
+| --- | --- |
+| CPU % / 每核 | `node:os` 每核 tick 时间（与 `/proc/stat` 相同的差分算法） |
+| CPU 型号 / 核心 / 主频 | `sysctl machdep.cpu.brand_string`、`hw.physicalcpu`、`hw.logicalcpu` |
+| 内存 | `vm_stat` 页计数 + `sysctl hw.memsize`（可用 = free + inactive + speculative + purgeable） |
+| 交换分区 | `sysctl vm.swapusage` |
+| 负载 / 运行时长 | `getloadavg(3)` / `node:os` |
+| 磁盘 | `df -k`，感知 APFS：`/System/Volumes/Data` 合并为唯一 `/` 行（系统卷与 `/System/Volumes/*` 噪声被剔除） |
+| 网络 | `netstat -ib` 字节计数 + `os.networkInterfaces()` 地址；主接口取默认路由网卡，绝不选 VPN 的 `utun` |
+| 进程 | `ps -A -o pid,ppid,user,%cpu,%mem,rss,etime,state,command` |
+| 线程 / 可运行 | `sysctl kern.num_threads` + `ps` 的 `R` 状态计数 |
+| Docker | Docker Desktop socket（`~/.docker/run/docker.sock`、`/var/run/docker.sock`、`DOCKER_HOST`） |
+
+macOS 上无需 root 拿不到、因此如实标记为未知的：每盘**读/写**计数（`iostat` 无读写拆分）与**温度传感器**（`powermetrics` 需提权）。关于对话框中的能力项会如实反映。
+
+显式传入 `procRoot` 时仍强制走 Linux 读取器，因此 `/proc` fixture 测试可在任意主机运行。
+
 ## v0.6.1 — DSH 0.2.2-rc.1 兼容性适配
 
 针对已安装的 **DeepSeek Harness 0.2.2-rc.1**（`@deepseek-ai/cordis` 4.1.0）的纯兼容性版本。对照内置包重新核验了完整运行时接口，**无需改动任何运行时代码**，只把清单里的版本声明对齐到最新版本线：
@@ -182,6 +203,7 @@ npm test        # node:test 单元测试（test/fixtures/proc 为真实 /proc �
 
 ## 更新日志
 
+- **v0.6.2** macOS 支持：原生 Darwin provider（sysctl / vm_stat / df / ps / netstat），APFS 磁盘、每核 CPU、交换分区、进程、Docker Desktop socket。
 - **v0.6.1** DSH 0.2.2-rc.1 兼容性适配：新增 `engines.dsh`、cordis 4.1.0 / DSH client 0.2.2-rc.1 版本线对齐、生成器路径修复；运行时接口重新核验（无需改动代码）。
 - **v0.6.0** 左侧分区导航、10 分钟历史、更丰富的主机指标、RPC 协议 v4。
 - **v0.5.0** 监控面板改为 keyed `main` 主面板 + `sidebar.panellist` 导航入口。
