@@ -18,9 +18,12 @@
  * force-regenerated from lib/i18n.js (self-healing).
  */
 import { readFileSync, writeFileSync } from 'node:fs'
+import { fileURLToPath } from 'node:url'
 import { messages } from '../lib/i18n.js'
 
-const CLIENT = new URL('../lib/client.js', import.meta.url).pathname
+// fileURLToPath (not URL.pathname) so workspace paths containing spaces or
+// other percent-encoded characters resolve to a real filesystem path.
+const CLIENT = fileURLToPath(new URL('../lib/client.js', import.meta.url))
 const PKG = JSON.parse(readFileSync(new URL('../package.json', import.meta.url), 'utf8'))
 const VERSION = PKG.version
 

@@ -5,6 +5,18 @@ DSH（DeepSeek Harness）Web 的**只读系统监控**插件：在左侧 Sidebar
 [![License: MIT](https://img.shields.io/badge/license-MIT-blue.svg)](LICENSE) [![awesome · DSH plugin](https://awesome-dsh-plugin.com/badge.svg)](https://awesome-dsh-plugin.com)
 
 > 全程只读：不提供 docker restart/stop、process kill、exec、shell 等任何控制操作，适合随手查资源、排障和观察容器状态。
+## v0.6.1 — DSH 0.2.2-rc.1 兼容性适配
+
+针对已安装的 **DeepSeek Harness 0.2.2-rc.1**（`@deepseek-ai/cordis` 4.1.0）的纯兼容性版本。对照内置包重新核验了完整运行时接口，**无需改动任何运行时代码**，只把清单里的版本声明对齐到最新版本线：
+
+- **新增 `engines.dsh: ^0.2.2-rc.1`**。`app-boot` 的 `evaluatePluginCompatibility` 在存在 `engines.dsh` 时改为只检查它（用 `semver.satisfies(..., { includePrerelease: true })`），以此把插件钉在已验证的 0.2.2 版本线。
+- **`@deepseek-ai/cordis`：`~4.0.4` → `~4.1.0`** —— 当前运行时内置 cordis 4.1.0（`dsh-client-connection@0.2.2-rc.1` 自身也 peer 依赖 `~4.1.0`）。
+- **`@deepseek-ai/dsh-client-connection` / `-ui-renderer`：`^0.2.0-rc.2` → `^0.2.2-rc.1`** —— 声明的 DSH client 版本线与已安装的 0.2.2-rc.1 对齐。
+- 重新核验：`connection.rpc.call(channel, endpoint, payload)` 仍输出相同的 `client-request` / `server-response` 信封（`dsh-client-connection@0.2.2-rc.1`）；keyed `main` + `sidebar.panellist` 席位仍由 `ui-renderer` / `ui-sidebar` / `ui-layout` 正确解析；Host 端 `webServer.register({ kind: 'prefix' })` + `connection.requestRejection` 路由栅栏仍匹配 `dsh-host-webserver`。
+- 修复 `tools/sync-generated.mjs`：原用 `new URL(...).pathname`，会把空格保留为 `%20`，导致路径含空格的工作区（如本目录）执行失败；现改用 `fileURLToPath`。
+- 修复 `lib/collectors.js` 中一处既有的网络速率计时抖动：两次轮询落在同一墙钟毫秒时 `dt === 0`，会把 `rxBytesPerSec` 置空为 `null`；速率基线现改用单调递增的毫秒时间戳，快速磁盘上测试稳定通过。
+- `lib/client.js` 的 `CLIENT_VERSION` 同步为 `0.6.1`；`test/manifest.test.js` 期望更新并新增 `engines.dsh` 断言。
+
 ## v0.6.0 — 左侧分区导航、丰富的主机指标与历史趋势
 
 - **主面板左侧分区导航**（概览 / 性能 / 进程 / Docker / 硬件与系统）。窄屏（<768px）时导航变为顶部横向条。
@@ -170,6 +182,9 @@ npm test        # node:test 单元测试（test/fixtures/proc 为真实 /proc �
 
 ## 更新日志
 
+- **v0.6.1** DSH 0.2.2-rc.1 兼容性适配：新增 `engines.dsh`、cordis 4.1.0 / DSH client 0.2.2-rc.1 版本线对齐、生成器路径修复；运行时接口重新核验（无需改动代码）。
+- **v0.6.0** 左侧分区导航、10 分钟历史、更丰富的主机指标、RPC 协议 v4。
+- **v0.5.0** 监控面板改为 keyed `main` 主面板 + `sidebar.panellist` 导航入口。
 - **v0.4.0** DSH 0.2.0-rc.2 兼容性适配：抽屉迁入 `shell.overlay` 插槽（不再挂载 document.body 应用根）、Host `handle(channel, handler)` 参数对齐、清单 peer 依赖与 `dsh.client.inject` 指向 0.2 版本线、主题 token 更新。
 - **v0.3.x** 停止/异常语义拆分、宿主机 netns 探测缓存、Client 版本自动同步、i18n 拼接检查、0.1.1-rc.2 兼容。
 - **v0.2.2** 可靠性收口：网络以 `/proc/net/dev` 为事实源（IP 解析失败仍保留接口与流量）；CPU 区分物理核心 / 逻辑 CPU；Docker 端口细化（loopback 锁定、hostIp 去重、uptime 中文化）；RPC 版本握手；进程聚合视图；移动端 `100dvh` + 安全区；fixture 单元测试与 CI。

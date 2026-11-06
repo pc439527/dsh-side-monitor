@@ -5,6 +5,18 @@ A **read-only system monitor** for DeepSeek Harness (DSH) Web: a “System Monit
 [![License: MIT](https://img.shields.io/badge/license-MIT-blue.svg)](LICENSE) [![awesome · DSH plugin](https://awesome-dsh-plugin.com/badge.svg)](https://awesome-dsh-plugin.com)
 
 > Read-only by design: no docker restart/stop, no process kill, no exec, no shell. Built for quick resource checks, troubleshooting, and container observation.
+## v0.6.1 — DSH 0.2.2-rc.1 compat pass
+
+Compatibility-only release against the installed **DeepSeek Harness 0.2.2-rc.1** (`@deepseek-ai/cordis` 4.1.0). The full runtime surface was re-verified against the shipped packages and **no runtime code change was needed** — only the manifest's version declarations were retargeted:
+
+- **`engines.dsh: ^0.2.2-rc.1`** added. `app-boot`'s `evaluatePluginCompatibility` checks `engines.dsh` (when present) *instead of* peers, using `semver.satisfies(..., { includePrerelease: true })`; this pins the plugin to the 0.2.2 line it was verified on.
+- **`@deepseek-ai/cordis`: `~4.0.4` → `~4.1.0`** — the installed runtime ships cordis 4.1.0 (and `dsh-client-connection@0.2.2-rc.1` itself peers on `~4.1.0`).
+- **`@deepseek-ai/dsh-client-connection` / `-ui-renderer`: `^0.2.0-rc.2` → `^0.2.2-rc.1`** — align the declared DSH client line with the installed 0.2.2-rc.1 packages.
+- Re-verified: `connection.rpc.call(channel, endpoint, payload)` still emits the same `client-request` / `server-response` envelopes (`dsh-client-connection@0.2.2-rc.1`); the keyed `main` + `sidebar.panellist` seats still resolve through `ui-renderer` / `ui-sidebar` / `ui-layout`; the Host `webServer.register({ kind: 'prefix' })` + `connection.requestRejection` route fence still matches `dsh-host-webserver`.
+- Fixed `tools/sync-generated.mjs`: it used `new URL(...).pathname`, which leaves spaces percent-encoded (`%20`) and crashed in workspaces whose path contains a space. Now uses `fileURLToPath`.
+- Fixed a pre-existing timing flake in `lib/collectors.js` network rates: two polls within the same wall-clock millisecond produced `dt === 0` and blanked `rxBytesPerSec` to `null`. The rate baseline now uses a monotonic millisecond stamp; the test suite is stable on fast disks.
+- `lib/client.js` `CLIENT_VERSION` synced to `0.6.1`; `test/manifest.test.js` expectations updated and an `engines.dsh` assertion added.
+
 ## v0.6.0 — Section rail, richer host metrics, history
 
 - **Left section rail** inside the main panel (概览 / 性能 / 进程 / Docker / 硬件与系统). Narrow screens (<768px) turn the rail into a horizontal strip.
@@ -170,6 +182,9 @@ npm test        # node:test unit tests (test/fixtures/proc are real /proc snapsh
 
 ## Changelog
 
+- **v0.6.1** — DSH 0.2.2-rc.1 compat pass: `engines.dsh` + cordis 4.1.0 / DSH client 0.2.2-rc.1 peer line; generator path fix; runtime surface re-verified (no code change needed).
+- **v0.6.0** — Section rail, 10-minute history, richer host metrics, RPC protocol v4.
+- **v0.5.0** — System Monitor became a keyed main panel with a `sidebar.panellist` nav row.
 - **v0.4.0** — DSH 0.2.0-rc.2 compat pass: drawer moved to the `shell.overlay` slot (no `document.body` app root), Host `handle(channel, handler)` arity, manifest peer deps / `dsh.client.inject` retargeted to the 0.2 line, current theme tokens.
 - **v0.3.x** — Stopped/issue split, host netns probe caching, client version auto-sync, i18n lint, 0.1.1-rc.2 compat.
 - **v0.2.2** — Reliability: network uses `/proc/net/dev` as source of truth (interfaces/traffic kept even when IP resolution fails); CPU distinguishes physical cores / logical CPUs; Docker port refinements (loopback locking, hostIp dedup, localized uptime); RPC version handshake; process aggregate view; mobile `100dvh` + safe areas; fixture unit tests and CI.

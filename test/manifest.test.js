@@ -23,15 +23,21 @@ test('client manifest targets the DSH 0.2 web client', () => {
   }
 })
 
-test('peerDependencies target the installed DSH 0.2 line', () => {
+test('peerDependencies target the installed DSH 0.2.2-rc.1 line', () => {
   const peers = pkg.peerDependencies
   assert.equal('@deepseek-ai/dsh-client-runtime' in peers, false)
   for (const name of ['@deepseek-ai/dsh-client-connection', '@deepseek-ai/dsh-client-ui-renderer']) {
-    assert.equal(peers[name], '^0.2.0-rc.2', name)
+    assert.equal(peers[name], '^0.2.2-rc.1', name)
   }
-  assert.equal(peers['@deepseek-ai/cordis'], '~4.0.4')
+  assert.equal(peers['@deepseek-ai/cordis'], '~4.1.0')
   assert.equal(peers.react, '^18.2.0')
   assert.equal(peers['react-dom'], '^18.2.0')
+})
+
+test('engines.dsh declares the compatible DSH runtime', () => {
+  // app-boot's evaluatePluginCompatibility checks engines.dsh (when present)
+  // INSTEAD of peers, with semver.satisfies(..., { includePrerelease: true }).
+  assert.equal(pkg.engines.dsh, '^0.2.2-rc.1')
 })
 
 test('browser half registers slots instead of a second document.body app', () => {
