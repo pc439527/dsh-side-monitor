@@ -2,7 +2,7 @@
 
 A **read-only system monitor** for DeepSeek Harness (DSH) Web: a “System Monitor” entry in the left sidebar footer opens a right-side monitor drawer that shows live **host** (the machine DSH runs on) overview, process list, and Docker container status.
 
-[![License: MIT](https://img.shields.io/badge/license-MIT-blue.svg)](LICENSE) [![awesome · DSH plugin](https://awesome-dsh-plugin.com/badge.svg)](https://awesome-dsh-plugin.com)
+[![License: MIT](https://img.shields.io/badge/license-MIT-blue.svg)](LICENSE) [![awesome · DSH plugin](https://awesome-dsh-plugin.com/badge.svg)](https://awesome-dsh-plugin.com) [![](https://img.shields.io/badge/powered_by-dsh-4D6BFE?style=flat-square&logo=deepseek&logoColor=white)](https://github.com/deepseek-ai/deepseek-harness)
 
 > Read-only by design: no docker restart/stop, no process kill, no exec, no shell. Built for quick resource checks, troubleshooting, and container observation.
 ## v0.6.2 — macOS (Darwin) support
