@@ -116,11 +116,11 @@ Compatibility-only release against the installed **DeepSeek Harness 0.2.2-rc.1**
 
 ### UX & Reliability
 
-- **Sidebar entry**: registered on the `sidebar.footer.action` slot — shows text when expanded, icon only when collapsed, highlighted while open.
-- **Responsive**: a draggable right drawer on desktop (default 500px, range 360–800px, width persisted); switches to a full-screen page below 768px viewport, using Container Query to adapt to the panel's own width; mobile uses `100dvh` + safe-area insets.
+- **Sidebar entry**: registered on the `sidebar.panellist` nav group (beside Plugins / Automation tasks) — shows text when expanded, icon only when collapsed, highlighted while open.
+- **Responsive**: the monitor is a keyed main-panel page (v0.5.0+) with a left section rail (Overview / Performance / Processes / Docker / Hardware & system); below 768px the rail becomes a horizontal strip and the layout adapts via Container Query; mobile uses `100dvh` + safe-area insets.
 - **Source identification**: auto-detects the environment (Host / Container); top badge + status line (per-module sources for overview / processes / Docker) + a “View data sources” dialog listing the real source paths with a consistency self-check.
 - **Independent module state**: each module has its own error / updated-at; on failure the last good data is kept with a stale banner.
-- **Protocol handshake**: RPC responses carry `protocolVersion` (v3) + `pluginVersion`; a mismatch shows a “version mismatch” banner and an About panel (Browser / Host / RPC versions, fine-grained status and capabilities) instead of undefined fields.
+- **Protocol handshake**: RPC responses carry `protocolVersion` (v4) + `pluginVersion`; a mismatch shows a “version mismatch” banner and an About panel (Browser / Host / RPC versions, fine-grained status and capabilities) instead of undefined fields.
 - Manual refresh (spinner animation) and a “copy diagnostics” action that generates a one-click diagnostic text.
 - Polling stops/pauses when the panel is closed or the tab is hidden; each poll awaits the previous request (no re-entrancy).
 
@@ -131,7 +131,7 @@ Compatibility-only release against the installed **DeepSeek Harness 0.2.2-rc.1**
 dsh plugin --profile web add /path/to/dsh-side-monitor
 ```
 
-After installing, refresh the page — a “System Monitor” entry appears at the bottom of the left sidebar.
+After installing, refresh the page — a “System Monitor” entry appears in the left sidebar's navigation group (beside Plugins / Automation tasks).
 
 ## Host Mount Mode
 
@@ -169,7 +169,7 @@ Once mounted, overview / processes read host resources and the source label swit
 ## Architecture
 
 ```text
-Client UI (Sidebar Row + Monitor Main-Panel Page + 3 Tabs)
+Client UI (Sidebar Nav Row + Monitor Main-Panel Page + 5 Sections)
         │  RPC: connection.rpc.call('/side-monitor', ...)
         ▼
 Host Service (lib/collectors.js + lib/rpc.js)
@@ -198,8 +198,9 @@ npm test        # node:test unit tests (test/fixtures/proc are real /proc snapsh
 
 ## Known Limitations
 
-- The full host PID view is available via `pid: host` but is not forced by default; enabling it makes the consistency self-check report that the PID namespace is not isolated.
-- Host/container process view switching, a settings page, historical trends, and native DSH Side Card integration are planned for later releases.
+- macOS without root: per-disk read/write counters (`iostat` has no split) and thermal sensors (`powermetrics` needs privileges) are reported as unknown.
+- Enabling `pid: host` on the DSH container gives the full host PID view, but the consistency self-check then reports that the PID namespace is not isolated.
+- A settings page and native DSH Side Card integration are planned for later releases. (Historical trends shipped in v0.6.0; the panel keeps its own zh-CN / en-US dictionary rather than the Client locale service.)
 
 ## Changelog
 

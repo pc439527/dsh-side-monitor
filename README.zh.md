@@ -116,11 +116,11 @@ macOS 上无需 root 拿不到、因此如实标记为未知的：每盘**读/�
 
 ### 体验与可靠性
 
-- **Sidebar 入口**：注册到 `sidebar.footer.action` 插槽，展开时显示文字、折叠时仅图标，打开后高亮。
-- **响应式**：桌面端为可拖动宽度的右侧 Drawer（默认 500px，范围 360–800px，宽度持久化）；viewport < 768px 时自动切换为全屏页面，采用 Container Query 按面板自身宽度自适应，移动端 `100dvh` + 安全区适配。
+- **Sidebar 入口**：注册到 `sidebar.panellist` 导航组（位于 插件 / 自动化任务 之后），展开时显示文字、折叠时仅图标，打开后高亮。
+- **响应式**：监控为主面板页（v0.5.0+），带左侧分区导航（概览 / 性能 / 进程 / Docker / 硬件与系统）；<768px 时导航变为顶部横向条，布局采用 Container Query 按面板自身宽度自适应，移动端 `100dvh` + 安全区适配。
 - **采集来源标识**：自动识别运行环境（Host / Container），顶部徽标 + 状态行（概览 / 进程 / Docker 分别标注来源）+「查看采集来源」弹窗（逐项展示真实来源路径 + 一致性自检）。
 - **状态独立**：三个模块各自 error / 更新时间，请求失败保留最后成功数据并显示 stale 横幅。
-- **版本握手**：RPC 响应携带 `protocolVersion`（v3）+ `pluginVersion`；不匹配时显示「版本不一致」横幅与「关于」面板（Browser / Host / RPC 版本），避免旧 Host 导致的 undefined 字段。
+- **版本握手**：RPC 响应携带 `protocolVersion`（v4）+ `pluginVersion`；不匹配时显示「版本不一致」横幅与「关于」面板（Browser / Host / RPC 版本），避免旧 Host 导致的 undefined 字段。
 - 手动刷新（旋转动画）、「复制诊断信息」一键生成诊断文本。
 - 面板关闭或浏览器标签页隐藏时停止/暂停轮询；同一轮询 await 上一请求，禁止重入。
 
@@ -131,7 +131,7 @@ macOS 上无需 root 拿不到、因此如实标记为未知的：每盘**读/�
 dsh plugin --profile web add /path/to/dsh-side-monitor
 ```
 
-安装后刷新页面，左侧 Sidebar 底部出现「系统监控」入口。
+安装后刷新页面，左侧 Sidebar 导航组（插件 / 自动化任务 之后）出现「系统监控」入口。
 
 ## 宿主机采集（Host Mount Mode）
 
@@ -169,7 +169,7 @@ fsRoot:   /host/root
 ## 架构
 
 ```text
-Client UI (Sidebar Row + Monitor Main-Panel Page + 3 Tabs)
+Client UI (Sidebar 导航行 + 监控主面板页 + 5 个分区)
         │  RPC: connection.rpc.call('/side-monitor', ...)
         ▼
 Host Service (lib/collectors.js + lib/rpc.js)
@@ -198,8 +198,9 @@ npm test        # node:test 单元测试（test/fixtures/proc 为真实 /proc �
 
 ## 已知限制
 
-- 完整宿主 PID 视图可通过 `pid: host` 获得，但默认不强制开启；开启后一致性自检会提示 PID 命名空间未隔离。
-- 宿主 / 容器进程双视角切换、设置页、历史趋势、DSH 原生 Side Card 集成留待后续版本。
+- macOS 无 root 时：每盘读/写计数（`iostat` 无读写拆分）与温度传感器（`powermetrics` 需提权）如实标记为未知。
+- DSH 容器开启 `pid: host` 可获得完整宿主 PID 视图，但开启后一致性自检会提示 PID 命名空间未隔离。
+- 设置页与 DSH 原生 Side Card 集成留待后续版本。（历史趋势已于 v0.6.0 发布；面板目前仍自带 zh-CN / en-US 词典，未接入 Client locale 服务。）
 
 ## 更新日志
 
