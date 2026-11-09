@@ -17,7 +17,7 @@ macOS 没有 `/proc`，此前所有 Linux 读取器在 Mac 上全部落空（CPU
 | 交换分区 | `sysctl vm.swapusage` |
 | 负载 / 运行时长 | `getloadavg(3)` / `node:os` |
 | 磁盘 | `df -k`，感知 APFS：`/System/Volumes/Data` 合并为唯一 `/` 行（系统卷与 `/System/Volumes/*` 噪声被剔除） |
-| 网络 | `netstat -ib` 字节计数 + `os.networkInterfaces()` 地址；主接口取默认路由网卡，绝不选 VPN 的 `utun` |
+| 网络 | `netstat -ibn` 字节计数 + `os.networkInterfaces()` 地址；主接口取默认路由网卡，绝不选 VPN 的 `utun` |
 | 进程 | `ps -A -o pid,ppid,user,%cpu,%mem,rss,etime,state,command` |
 | 线程 / 可运行 | `sysctl kern.num_threads` + `ps` 的 `R` 状态计数 |
 | Docker | Docker Desktop socket（`~/.docker/run/docker.sock`、`/var/run/docker.sock`、`DOCKER_HOST`） |

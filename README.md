@@ -17,7 +17,7 @@ macOS has no `/proc`, so every Linux reader used to come back empty there (CPU "
 | Swap | `sysctl vm.swapusage` |
 | Load / uptime | `getloadavg(3)` / `node:os` |
 | Disks | `df -k`, APFS-aware: the `/System/Volumes/Data` volume becomes the single `/` row (system volume and `/System/Volumes/*` noise are dropped) |
-| Network | `netstat -ib` byte counters + `os.networkInterfaces()` addresses; primary = default-route NIC, never a VPN `utun` |
+| Network | `netstat -ibn` byte counters + `os.networkInterfaces()` addresses; primary = default-route NIC, never a VPN `utun` |
 | Processes | `ps -A -o pid,ppid,user,%cpu,%mem,rss,etime,state,command` |
 | Threads / runnable | `sysctl kern.num_threads` + `R` states from `ps` |
 | Docker | Docker Desktop sockets (`~/.docker/run/docker.sock`, `/var/run/docker.sock`, `DOCKER_HOST`) |

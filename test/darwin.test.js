@@ -118,6 +118,25 @@ test('parseDefaultRoute: reads the interface line', () => {
   assert.equal(parseDefaultRoute(''), null)
 })
 
+test('darwin provider: network() uses netstat -ibn (numeric, no reverse-DNS)', () => {
+  // Regression guard: `netstat -ib` without -n reverse-resolves every network
+  // address and can hang for many seconds. The provider runs through the
+  // synchronous execFileSync runner on the DSH host event loop (sampled every
+  // 2s by startHistorySampler), so one slow netstat freezes the whole app —
+  // new conversations and the plugin market time out. -n keeps it instant.
+  const calls = []
+  const exec = (bin, args) => {
+    calls.push([bin, args])
+    if (bin === 'netstat') return NETSTAT
+    return ''
+  }
+  const p = createDarwinProvider(exec)
+  p.network()
+  const netstat = calls.find(([bin]) => bin === 'netstat')
+  assert.ok(netstat, 'network() must read netstat byte counters')
+  assert.deepEqual(netstat[1], ['-ibn'], 'netstat must pass -n to avoid blocking reverse-DNS resolution')
+})
+
 test('darwin provider: injected runner produces the expected shapes', () => {
   const table = {
     'sysctl -n hw.memsize hw.physicalcpu hw.logicalcpu machdep.cpu.brand_string': '25769803776\n15\n15\nApple M5 Pro\n',
@@ -125,7 +144,7 @@ test('darwin provider: injected runner produces the expected shapes', () => {
     'sysctl -n vm.swapusage': 'total = 3072.00M  used = 2071.38M  free = 1000.62M',
     'df -k': DF,
     'ps -A -o pid=,ppid=,user=,%cpu=,%mem=,rss=,etime=,state=,command=': PS,
-    'netstat -ib': NETSTAT,
+    'netstat -ibn': NETSTAT,
     'route -n get default': '   route to: default\n  interface: en0\n',
     'sysctl -n kern.num_threads': '30720\n',
     'ps -A -o state=': 'Ss\nRs\nS\n',
@@ -153,7 +172,7 @@ test('collector on darwin: overview/processes/meta use the native provider', asy
     'sysctl -n vm.swapusage': 'total = 3072.00M  used = 2071.38M  free = 1000.62M',
     'df -k': DF,
     'ps -A -o pid=,ppid=,user=,%cpu=,%mem=,rss=,etime=,state=,command=': PS,
-    'netstat -ib': NETSTAT,
+    'netstat -ibn': NETSTAT,
     'route -n get default': '   route to: default\n  interface: en0\n',
     'sysctl -n kern.num_threads': '30720\n',
     'ps -A -o state=': 'Ss\nRs\nS\n',
